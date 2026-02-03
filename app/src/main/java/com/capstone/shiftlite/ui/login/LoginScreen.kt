@@ -25,6 +25,8 @@ fun LoginScreen(onLoginClick: () -> Unit) {
     // Local state to hold what the user types
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
 
     Column(
         modifier = Modifier
@@ -60,12 +62,30 @@ fun LoginScreen(onLoginClick: () -> Unit) {
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage!!,
+                color = MaterialTheme.colorScheme.error
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+
         Button(
-            onClick = onLoginClick,
+            onClick = {
+                if (email.isBlank() || password.isBlank()) {
+                    errorMessage = "Please enter email and password"
+                } else {
+                    errorMessage = null
+                    onLoginClick()
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Log In")
+            Text(text = "Log In")
         }
+
 
     }
 }
