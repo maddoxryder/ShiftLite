@@ -21,22 +21,44 @@ import androidx.compose.ui.Alignment
 import com.capstone.shiftlite.ui.home.HomeScreen
 import com.capstone.shiftlite.ui.login.LoginScreen
 import com.capstone.shiftlite.ui.Screen
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             ShiftLiteTheme {
-                var currentScreen by remember { mutableStateOf(Screen.LOGIN) }
+                val navController = rememberNavController()
 
-                when (currentScreen) {
-                    Screen.LOGIN -> LoginScreen(
-                        onLoginClick = { currentScreen = Screen.HOME }
-                    )
-                    Screen.HOME -> HomeScreen(
-                        onLogoutClick = { currentScreen = Screen.LOGIN }
-                    )
+                NavHost(
+                    navController = navController,
+                    startDestination = "login"
+                ) {
+                    composable("login") {
+                        LoginScreen(
+                            onLoginClick = {
+                                // later we'll validate/auth for real
+                                navController.navigate("home") {
+                                    popUpTo("login") { inclusive = true } // prevents back to login
+                                }
+                            }
+                        )
+                    }
+
+                    composable("home") {
+                        HomeScreen(
+                            onLogoutClick = {
+                                navController.navigate("login") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
                 }
+
             }
         }
 
