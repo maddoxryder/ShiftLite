@@ -17,8 +17,16 @@ import androidx.compose.material3.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.Alignment
+import com.capstone.shiftlite.ui.home.HomeScreen
 
 
+
+
+enum class Screen {
+    LOGIN,
+    HOME
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,18 +34,24 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ShiftLiteTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    LoginScreen()
+                var currentScreen by remember { mutableStateOf(Screen.LOGIN) }
+
+                when (currentScreen) {
+                    Screen.LOGIN -> LoginScreen(
+                        onLoginClick = { currentScreen = Screen.HOME }
+                    )
+                    Screen.HOME -> HomeScreen(
+                        onLogoutClick = { currentScreen = Screen.LOGIN }
+                    )
                 }
             }
         }
+
     }
 }
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen(onLoginClick: () -> Unit) {
     // Local state to hold what the user types
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -77,13 +91,13 @@ fun LoginScreen() {
         Spacer(modifier = Modifier.height(20.dp))
 
         Button(
-            onClick = {
-                // For now we do nothing (next step we'll add navigation)
-            },
+            onClick = onLoginClick,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Log In")
         }
+
     }
 }
+
 
