@@ -20,15 +20,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.Alignment
 import com.capstone.shiftlite.ui.home.HomeScreen
 import com.capstone.shiftlite.ui.login.LoginScreen
-
-
-
-
-enum class Screen {
-    LOGIN,
-    HOME
-}
-
+import com.capstone.shiftlite.ui.Screen
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
