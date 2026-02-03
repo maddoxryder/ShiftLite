@@ -19,15 +19,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 @Composable
 fun LoginScreen(onLoginClick: () -> Unit) {
     // Local state to hold what the user types
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
-
-
+    val scope = rememberCoroutineScope()
+    var isLoading by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -74,16 +76,30 @@ fun LoginScreen(onLoginClick: () -> Unit) {
 
         Button(
             onClick = {
+                // prevent double-click spam
+                if (isLoading) return@Button
+
+                // basic validation
                 if (email.isBlank() || password.isBlank()) {
                     errorMessage = "Please enter email and password"
-                } else {
-                    errorMessage = null
+                    return@Button
+                }
+
+                // fake login
+                errorMessage = null
+                isLoading = true
+
+                scope.launch {
+                    delay(1000) // simulate network call
+                    isLoading = false
                     onLoginClick()
                 }
             },
+            enabled = !isLoading
+            ,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Log In")
+            Text(text = if (isLoading) "Logging in..." else "Log In")
         }
 
 
