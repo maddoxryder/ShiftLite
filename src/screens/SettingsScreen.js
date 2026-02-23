@@ -1,11 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, Switch, Pressable, Alert } from "react-native";
 
-export default function SettingsScreen({ route }) {
-    // If you want logout here, you can pass it via route params later:
-    // navigation.navigate("Settings", { onLogout })
-    const onLogout = route?.params?.onLogout;
-
+export default function SettingsScreen({ onLogout }) {
     const [pushEnabled, setPushEnabled] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [darkMode, setDarkMode] = useState(false);
@@ -32,6 +28,18 @@ export default function SettingsScreen({ route }) {
             <Switch value={value} onValueChange={onValueChange} />
         </View>
     );
+
+    const confirmLogout = () => {
+        if (typeof onLogout !== "function") {
+            Alert.alert("Logout", "Logout is not wired from AppNavigator yet.");
+            return;
+        }
+
+        Alert.alert("Logout", "Are you sure you want to log out?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Logout", style: "destructive", onPress: onLogout },
+        ]);
+    };
 
     return (
         <View style={{ flex: 1, padding: 18, gap: 14 }}>
@@ -89,12 +97,9 @@ export default function SettingsScreen({ route }) {
                 <Text style={{ opacity: 0.7, marginTop: 4 }}>Data & permissions</Text>
             </Pressable>
 
-            {/* Optional logout */}
+            {/* Logout */}
             <Pressable
-                onPress={() => {
-                    if (typeof onLogout === "function") onLogout();
-                    else Alert.alert("Logout", "Hook logout from HomeScreen into Settings if you want it here.");
-                }}
+                onPress={confirmLogout}
                 style={{
                     marginTop: 6,
                     padding: 14,

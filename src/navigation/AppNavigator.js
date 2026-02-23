@@ -55,11 +55,25 @@ export default function AppNavigator() {
 
           <Stack.Screen name="MemberChat" component={MemberChatScreen} options={{ title: "Page" }} />
           <Stack.Screen name="Orders" component={OrdersScreen} />
-          <Stack.Screen name="Settings" component={SettingsScreen} />
-          <Stack.Screen name="Schedule" component={ScheduleScreen} />
-          <Stack.Screen name="Tasks" component={TasksScreen} />
-          <Stack.Screen name="Inventory" component={InventoryScreen} />
-          <Stack.Screen name="Messaging" component={MessagingScreen} />
+            <Stack.Screen name="Settings" options={{ title: "Settings" }}>
+                {(props) => <SettingsScreen {...props} role={role} onLogout={logout} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="Schedule" options={{ title: "Schedule" }}>
+                {(props) => <ScheduleScreen {...props} role={role} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="Tasks" options={{ title: "Tasks" }}>
+                {(props) => <TasksScreen {...props} role={role} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="Inventory" options={{ title: "Inventory" }}>
+                {(props) => <InventoryScreen {...props} role={role} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="Messaging" options={{ title: "Announcements" }}>
+                {(props) => <MessagingScreen {...props} role={role} />}
+            </Stack.Screen>
         </>
       )}
     </Stack.Navigator>
