@@ -5,6 +5,7 @@ import { getItem, setItem, removeItem } from "../services/storage";
 import LoginScreen from "../screens/LoginScreen";
 import HomeScreen from "../screens/HomeScreen";
 import MemberChatScreen from "../screens/MemberChatScreen";
+import PingInboxScreen from "../screens/PingInboxScreen";
 import OrdersScreen from "../screens/OrdersScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import ScheduleScreen from "../screens/ScheduleScreen";
@@ -20,9 +21,6 @@ export default function AppNavigator() {
 
   useEffect(() => {
     (async () => {
-      // TEMP: force login to show once (remove after it works)
-      await removeItem("role");
-
       const savedRole = await getItem("role", null);
       setRole(savedRole);
       setBooting(false);
@@ -36,46 +34,57 @@ export default function AppNavigator() {
 
   const logout = async () => {
     await removeItem("role");
+    await removeItem("username");
     setRole(null);
   };
 
   if (booting) return null;
 
   return (
-    <Stack.Navigator>
-      {!role ? (
-        <Stack.Screen name="Login" options={{ title: "Login" }}>
-          {(props) => <LoginScreen {...props} onLogin={login} />}
-        </Stack.Screen>
-      ) : (
-        <>
-          <Stack.Screen name="Home" options={{ headerShown: false }}>
-            {(props) => <HomeScreen {...props} role={role} onLogout={logout} />}
-          </Stack.Screen>
-
-          <Stack.Screen name="MemberChat" component={MemberChatScreen} options={{ title: "Page" }} />
-          <Stack.Screen name="Orders" component={OrdersScreen} />
-            <Stack.Screen name="Settings" options={{ title: "Settings" }}>
-                {(props) => <SettingsScreen {...props} role={role} onLogout={logout} />}
+      <Stack.Navigator>
+        {!role ? (
+            <Stack.Screen name="Login" options={{ title: "Login" }}>
+              {(props) => <LoginScreen {...props} onLogin={login} />}
             </Stack.Screen>
+        ) : (
+            <>
+              <Stack.Screen name="Home" options={{ headerShown: false }}>
+                {(props) => <HomeScreen {...props} role={role} onLogout={logout} />}
+              </Stack.Screen>
 
-            <Stack.Screen name="Schedule" options={{ title: "Schedule" }}>
+              <Stack.Screen
+                  name="MemberChat"
+                  component={MemberChatScreen}
+                  options={{ title: "Page" }}
+              />
+
+              <Stack.Screen name="PingInbox" options={{ title: "Ping Inbox" }}>
+                {(props) => <PingInboxScreen {...props} role={role} />}
+              </Stack.Screen>
+
+              <Stack.Screen name="Orders" component={OrdersScreen} />
+
+              <Stack.Screen name="Settings" options={{ title: "Settings" }}>
+                {(props) => <SettingsScreen {...props} onLogout={logout} />}
+              </Stack.Screen>
+
+              <Stack.Screen name="Schedule" options={{ title: "Schedule" }}>
                 {(props) => <ScheduleScreen {...props} role={role} />}
-            </Stack.Screen>
+              </Stack.Screen>
 
-            <Stack.Screen name="Tasks" options={{ title: "Tasks" }}>
+              <Stack.Screen name="Tasks" options={{ title: "Tasks" }}>
                 {(props) => <TasksScreen {...props} role={role} />}
-            </Stack.Screen>
+              </Stack.Screen>
 
-            <Stack.Screen name="Inventory" options={{ title: "Inventory" }}>
+              <Stack.Screen name="Inventory" options={{ title: "Inventory" }}>
                 {(props) => <InventoryScreen {...props} role={role} />}
-            </Stack.Screen>
+              </Stack.Screen>
 
-            <Stack.Screen name="Messaging" options={{ title: "Announcements" }}>
+              <Stack.Screen name="Messaging" options={{ title: "Announcements" }}>
                 {(props) => <MessagingScreen {...props} role={role} />}
-            </Stack.Screen>
-        </>
-      )}
-    </Stack.Navigator>
+              </Stack.Screen>
+            </>
+        )}
+      </Stack.Navigator>
   );
 }
