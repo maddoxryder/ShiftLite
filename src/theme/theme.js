@@ -1,0 +1,32 @@
+export const theme = {
+    colors: {
+        bg: "#070B14",
+        bg2: "#0D1324",
+        surface: "rgba(20, 27, 45, 0.72)",
+        surfaceStrong: "#141B2D",
+        surfaceSoft: "rgba(255,255,255,0.06)",
+        border: "rgba(255,255,255,0.10)",
+        text: "#F8FAFF",
+        muted: "#98A2B3",
+        accent: "#7C5CFF",
+        accent2: "#4CC9F0",
+        success: "#3DDC97",
+        warning: "#FFB84D",
+        danger: "#FF5C7A",
+        shadow: "rgba(124,92,255,0.30)",
+    },
+    radius: {
+        sm: 12,
+        md: 18,
+        lg: 26,
+        xl: 32,
+        pill: 999,
+    },
+    spacing: {
+        xs: 6,
+        sm: 10,
+        md: 16,
+        lg: 22,
+        xl: 30,
+    },
+};

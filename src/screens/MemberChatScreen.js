@@ -1,8 +1,6 @@
 import React from "react";
 import { View, Text, Pressable, Alert } from "react-native";
-import { addPing } from "../services/pings";
-import { getItem } from "../services/storage";
-import { sendLocalPingNotification } from "../services/notifications";
+import { sendPingToUser } from "../services/pings";
 
 const PRESETS = [
     "Need help at front",
@@ -15,36 +13,25 @@ const PRESETS = [
 export default function MemberChatScreen({ route, navigation }) {
     const member = route?.params?.member;
 
-    const sendPing = async (message) => {
-        const from = await getItem("username", "manager");
+    const handleSend = async (message) => {
+        try {
+            await sendPingToUser({
+                toUserId: member.id,
+                message,
+            });
 
-        const ping = {
-            id: `p_${Date.now()}`,
-            from,
-            to: (member?.name || "unknown").toLowerCase(),
-            toRole: (member?.role || "").toLowerCase(),
-            message,
-            timestamp: new Date().toISOString(),
-            unread: true,
-            acknowledged: false,
-        };
-
-        await addPing(ping);
-
-        await sendLocalPingNotification(
-            `Ping for ${member?.name ?? "Team Member"}`,
-            message,
-            { pingId: ping.id }
-        );
-
-        Alert.alert("Ping sent", `${message} → ${member?.name ?? "team member"}`);
-        navigation.goBack();
+            Alert.alert("Ping sent", `${message} → ${member.display_name || member.name}`);
+            navigation.goBack();
+        } catch (err) {
+            console.warn("send ping error:", err);
+            Alert.alert("Error", "Could not send ping.");
+        }
     };
 
     return (
         <View style={{ flex: 1, padding: 20, gap: 12 }}>
             <Text style={{ fontSize: 22, fontWeight: "800" }}>
-                Page {member?.name ?? "Team Member"}
+                Page {member?.display_name || member?.name || "Team Member"}
             </Text>
 
             <Text style={{ opacity: 0.7 }}>Choose a preset message:</Text>
@@ -52,7 +39,7 @@ export default function MemberChatScreen({ route, navigation }) {
             {PRESETS.map((msg) => (
                 <Pressable
                     key={msg}
-                    onPress={() => sendPing(msg)}
+                    onPress={() => handleSend(msg)}
                     style={{
                         padding: 14,
                         borderRadius: 12,

@@ -1,40 +1,94 @@
-import { getItem, setItem } from "./storage";
+import { supabase } from "./supabase";
+import { getCurrentUserProfile } from "./auth";
 
-const STORAGE_KEY = "pingData";
+export async function sendPingToUser({ toUserId, message }) {
+    const currentUser = await getCurrentUserProfile();
 
-export async function getPings() {
-    return (await getItem(STORAGE_KEY, [])) || [];
+    if (!currentUser) {
+        throw new Error("No logged in user found.");
+    }
+
+    const { data: targetUser, error: targetError } = await supabase
+        .from("app_users")
+        .select("id, username, display_name")
+        .eq("id", toUserId)
+        .single();
+
+    if (targetError) throw targetError;
+
+    const { data, error } = await supabase.from("pings").insert({
+        from_user_id: currentUser.id,
+        to_user_id: targetUser.id,
+        from_user: currentUser.username,
+        to_user: targetUser.username,
+        message,
+        acknowledged: false,
+        sent: false,
+    }).select().single();
+
+    if (error) throw error;
+    return data;
 }
 
-export async function savePings(pings) {
-    await setItem(STORAGE_KEY, pings);
+export async function getInboxPings() {
+    const currentUser = await getCurrentUserProfile();
+
+    if (!currentUser) {
+        throw new Error("No logged in user found.");
+    }
+
+    const { data, error } = await supabase
+        .from("pings")
+        .select(`
+      id,
+      message,
+      acknowledged,
+      sent,
+      created_at,
+      from_user,
+      to_user,
+      from_user_id,
+      to_user_id
+    `)
+        .eq("to_user_id", currentUser.id)
+        .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
 }
 
-export async function addPing(ping) {
-    const current = await getPings();
-    const updated = [ping, ...current];
-    await savePings(updated);
-    return updated;
+export async function getSentPings() {
+    const currentUser = await getCurrentUserProfile();
+
+    if (!currentUser) {
+        throw new Error("No logged in user found.");
+    }
+
+    const { data, error } = await supabase
+        .from("pings")
+        .select(`
+      id,
+      message,
+      acknowledged,
+      sent,
+      created_at,
+      from_user,
+      to_user,
+      from_user_id,
+      to_user_id
+    `)
+        .eq("from_user_id", currentUser.id)
+        .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
 }
 
 export async function acknowledgePing(id) {
-    const current = await getPings();
-    const updated = current.map((p) =>
-        p.id === id ? { ...p, unread: false, acknowledged: true } : p
-    );
-    await savePings(updated);
-    return updated;
-}
+    const { error } = await supabase
+        .from("pings")
+        .update({ acknowledged: true })
+        .eq("id", id);
 
-export async function markPingRead(id) {
-    const current = await getPings();
-    const updated = current.map((p) =>
-        p.id === id ? { ...p, unread: false } : p
-    );
-    await savePings(updated);
-    return updated;
-}
-
-export async function clearPings() {
-    await savePings([]);
+    if (error) throw error;
 }

@@ -2,18 +2,38 @@ import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { registerForNotificationsAsync } from "./src/services/notifications";
-import { setItem } from "./src/services/storage";
+import { supabase } from "./src/services/supabase";
+import { getCurrentUserProfile } from "./src/services/auth";
 
 export default function App() {
     useEffect(() => {
-        (async () => {
-            const { expoPushToken } = await registerForNotificationsAsync();
+        const setupNotifications = async () => {
+            try {
+                const { expoPushToken } = await registerForNotificationsAsync();
+                if (!expoPushToken) return;
 
-            if (expoPushToken) {
-                await setItem("expoPushToken", expoPushToken);
-                console.log("Expo push token:", expoPushToken);
+                const profile = await getCurrentUserProfile();
+                if (!profile?.username) return;
+
+                const { error } = await supabase.from("device_tokens").upsert(
+                    {
+                        username: profile.username,
+                        expo_push_token: expoPushToken,
+                    },
+                    {
+                        onConflict: "username",
+                    }
+                );
+
+                if (error) {
+                    console.warn("device token upsert error:", error.message);
+                }
+            } catch (err) {
+                console.warn("notification setup error:", err);
             }
-        })();
+        };
+
+        setupNotifications();
     }, []);
 
     return (

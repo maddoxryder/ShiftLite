@@ -1,74 +1,54 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, FlatList, Pressable, Switch } from "react-native";
-import { getPings, acknowledgePing, markPingRead } from "../services/pings";
-import { getItem } from "../services/storage";
+import React, { useEffect, useState } from "react";
+import { View, Text, FlatList, Pressable } from "react-native";
+import { getInboxPings, acknowledgePing } from "../services/pings";
 
 export default function PingInboxScreen({ role }) {
     const [items, setItems] = useState([]);
-    const [username, setUsername] = useState("");
-    const [unreadOnly, setUnreadOnly] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     const load = async () => {
-        const all = await getPings();
-        const currentUsername = await getItem("username", "");
-        setUsername(currentUsername);
-        setItems(all);
+        try {
+            setLoading(true);
+            const data = await getInboxPings();
+            setItems(data);
+        } catch (err) {
+            console.warn("inbox load error:", err);
+            setItems([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
         load();
     }, []);
 
-    const visible = useMemo(() => {
-        let filtered = items;
-
-        if (role !== "manager") {
-            filtered = filtered.filter(
-                (p) =>
-                    p.to === username ||
-                    p.to === username.toLowerCase() ||
-                    p.toRole === role
-            );
-        }
-
-        if (unreadOnly) {
-            filtered = filtered.filter((p) => p.unread);
-        }
-
-        return filtered;
-    }, [items, username, role, unreadOnly]);
-
     const handleAcknowledge = async (id) => {
-        await acknowledgePing(id);
-        load();
+        try {
+            await acknowledgePing(id);
+            await load();
+        } catch (err) {
+            console.warn("ack error:", err);
+        }
     };
 
-    const handleRead = async (id) => {
-        await markPingRead(id);
-        load();
-    };
+    if (loading) {
+        return (
+            <View style={{ flex: 1, padding: 20, justifyContent: "center", alignItems: "center" }}>
+                <Text>Loading pings...</Text>
+            </View>
+        );
+    }
 
     return (
-        <View style={{ flex: 1, padding: 16, gap: 12, backgroundColor: "#F6F7FF" }}>
-            <Text style={{ fontSize: 18, fontWeight: "900" }}>
-                Ping Inbox {role === "manager" ? "(Manager)" : "(Staff)"}
-            </Text>
-
-            <View
-                style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                }}
-            >
-                <Text style={{ fontWeight: "800" }}>Unread only</Text>
-                <Switch value={unreadOnly} onValueChange={setUnreadOnly} />
-            </View>
+        <View style={{ flex: 1, padding: 16, gap: 12 }}>
+            <Text style={{ fontSize: 20, fontWeight: "900" }}>Ping Inbox</Text>
 
             <FlatList
-                data={visible}
+                data={items}
                 keyExtractor={(item) => item.id}
                 ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+                ListEmptyComponent={<Text style={{ opacity: 0.6 }}>No pings found.</Text>}
                 renderItem={({ item }) => (
                     <View
                         style={{
@@ -76,51 +56,36 @@ export default function PingInboxScreen({ role }) {
                             borderRadius: 14,
                             padding: 14,
                             borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.06)",
+                            borderColor: "#eee",
                         }}
                     >
                         <Text style={{ fontWeight: "900" }}>{item.message}</Text>
-                        <Text style={{ marginTop: 6, opacity: 0.75 }}>
-                            From: {item.from} → To: {item.to}
+                        <Text style={{ marginTop: 6, opacity: 0.7 }}>
+                            From: {item.from_user}
                         </Text>
-                        <Text style={{ opacity: 0.7 }}>
-                            {new Date(item.timestamp).toLocaleString()}
-                        </Text>
-                        <Text style={{ marginTop: 6 }}>
-                            {item.unread ? "Unread" : "Read"} •{" "}
-                            {item.acknowledged ? "Acknowledged" : "Pending"}
+                        <Text style={{ opacity: 0.6 }}>
+                            {new Date(item.created_at).toLocaleString()}
                         </Text>
 
-                        {role === "manager" ? null : (
-                            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
-                                <Pressable
-                                    onPress={() => handleRead(item.id)}
-                                    style={{
-                                        flex: 1,
-                                        padding: 12,
-                                        borderRadius: 12,
-                                        backgroundColor: "rgba(17,17,17,0.08)",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Text style={{ fontWeight: "800" }}>Mark Read</Text>
-                                </Pressable>
-
-                                <Pressable
-                                    onPress={() => handleAcknowledge(item.id)}
-                                    style={{
-                                        flex: 1,
-                                        padding: 12,
-                                        borderRadius: 12,
-                                        backgroundColor: "#111",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Text style={{ color: "#fff", fontWeight: "900" }}>
-                                        Acknowledge
-                                    </Text>
-                                </Pressable>
-                            </View>
+                        {!item.acknowledged && role !== "manager" ? (
+                            <Pressable
+                                onPress={() => handleAcknowledge(item.id)}
+                                style={{
+                                    marginTop: 12,
+                                    backgroundColor: "#111",
+                                    padding: 12,
+                                    borderRadius: 12,
+                                    alignItems: "center",
+                                }}
+                            >
+                                <Text style={{ color: "#fff", fontWeight: "800" }}>
+                                    Acknowledge
+                                </Text>
+                            </Pressable>
+                        ) : (
+                            <Text style={{ marginTop: 10, fontWeight: "700", color: "green" }}>
+                                {item.acknowledged ? "Acknowledged" : "Received"}
+                            </Text>
                         )}
                     </View>
                 )}

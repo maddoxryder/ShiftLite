@@ -1,6 +1,5 @@
 ﻿import React, { useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { getItem, setItem, removeItem } from "../services/storage";
 
 import LoginScreen from "../screens/LoginScreen";
 import HomeScreen from "../screens/HomeScreen";
@@ -13,43 +12,90 @@ import TasksScreen from "../screens/TasksScreen";
 import InventoryScreen from "../screens/InventoryScreen";
 import MessagingScreen from "../screens/MessagingScreen";
 
+import { getCurrentSession, getCurrentUserProfile, signOut } from "../services/auth";
+import { supabase } from "../services/supabase";
+
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
   const [booting, setBooting] = useState(true);
-  const [role, setRole] = useState(null);
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
 
-  useEffect(() => {
-    (async () => {
-      const savedRole = await getItem("role", null);
-      setRole(savedRole);
-      setBooting(false);
-    })();
-  }, []);
-
-  const login = async (r) => {
-    await setItem("role", r);
-    setRole(r);
+  const loadProfile = async () => {
+    const p = await getCurrentUserProfile();
+    setProfile(p);
   };
 
-  const logout = async () => {
-    await removeItem("role");
-    await removeItem("username");
-    setRole(null);
+  useEffect(() => {
+    let mounted = true;
+
+    const init = async () => {
+      try {
+        const currentSession = await getCurrentSession();
+        if (!mounted) return;
+
+        setSession(currentSession);
+        if (currentSession) {
+          await loadProfile();
+        }
+      } catch (err) {
+        console.warn("init auth error:", err);
+      } finally {
+        if (mounted) setBooting(false);
+      }
+    };
+
+    init();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      setSession(nextSession);
+      if (nextSession) {
+        await loadProfile();
+      } else {
+        setProfile(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogin = async () => {
+    const currentSession = await getCurrentSession();
+    setSession(currentSession);
+    await loadProfile();
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    setSession(null);
+    setProfile(null);
   };
 
   if (booting) return null;
 
   return (
       <Stack.Navigator>
-        {!role ? (
-            <Stack.Screen name="Login" options={{ title: "Login" }}>
-              {(props) => <LoginScreen {...props} onLogin={login} />}
+        {!session || !profile ? (
+            <Stack.Screen name="Login" options={{ headerShown: false }}>
+              {(props) => <LoginScreen {...props} onLogin={handleLogin} />}
             </Stack.Screen>
         ) : (
             <>
               <Stack.Screen name="Home" options={{ headerShown: false }}>
-                {(props) => <HomeScreen {...props} role={role} onLogout={logout} />}
+                {(props) => (
+                    <HomeScreen
+                        {...props}
+                        role={profile.role}
+                        user={profile}
+                        onLogout={handleLogout}
+                    />
+                )}
               </Stack.Screen>
 
               <Stack.Screen
@@ -59,29 +105,65 @@ export default function AppNavigator() {
               />
 
               <Stack.Screen name="PingInbox" options={{ title: "Ping Inbox" }}>
-                {(props) => <PingInboxScreen {...props} role={role} />}
+                {(props) => (
+                    <PingInboxScreen
+                        {...props}
+                        role={profile.role}
+                        user={profile}
+                    />
+                )}
               </Stack.Screen>
 
               <Stack.Screen name="Orders" component={OrdersScreen} />
 
               <Stack.Screen name="Settings" options={{ title: "Settings" }}>
-                {(props) => <SettingsScreen {...props} onLogout={logout} />}
+                {(props) => (
+                    <SettingsScreen
+                        {...props}
+                        role={profile.role}
+                        onLogout={handleLogout}
+                    />
+                )}
               </Stack.Screen>
 
               <Stack.Screen name="Schedule" options={{ title: "Schedule" }}>
-                {(props) => <ScheduleScreen {...props} role={role} />}
+                {(props) => (
+                    <ScheduleScreen
+                        {...props}
+                        role={profile.role}
+                        user={profile}
+                    />
+                )}
               </Stack.Screen>
 
               <Stack.Screen name="Tasks" options={{ title: "Tasks" }}>
-                {(props) => <TasksScreen {...props} role={role} />}
+                {(props) => (
+                    <TasksScreen
+                        {...props}
+                        role={profile.role}
+                        user={profile}
+                    />
+                )}
               </Stack.Screen>
 
               <Stack.Screen name="Inventory" options={{ title: "Inventory" }}>
-                {(props) => <InventoryScreen {...props} role={role} />}
+                {(props) => (
+                    <InventoryScreen
+                        {...props}
+                        role={profile.role}
+                        user={profile}
+                    />
+                )}
               </Stack.Screen>
 
               <Stack.Screen name="Messaging" options={{ title: "Announcements" }}>
-                {(props) => <MessagingScreen {...props} role={role} />}
+                {(props) => (
+                    <MessagingScreen
+                        {...props}
+                        role={profile.role}
+                        user={profile}
+                    />
+                )}
               </Stack.Screen>
             </>
         )}

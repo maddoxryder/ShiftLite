@@ -1,41 +1,80 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+############################
+# Node / React Native / Expo
+############################
 node_modules/
-
-# Expo
 .expo/
+.expo-shared/
 dist/
+build/
 web-build/
-expo-env.d.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
+############################
+# Expo / Metro / Cache
+############################
+.cache/
+*.log
 
-# Metro
-.metro-health-check*
+############################
+# Environment variables (IMPORTANT)
+############################
+.env
+.env.*
+!.env.example
 
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
+############################
 # macOS
+############################
 .DS_Store
-*.pem
 
-# local env files
-.env*.local
+############################
+# Windows
+############################
+Thumbs.db
 
-# typescript
+############################
+# VSCode / Editors
+############################
+.vscode/
+.idea/
+
+############################
+# TypeScript
+############################
 *.tsbuildinfo
 
-# generated native folders
-/ios
-/android
+############################
+# Android / iOS build files
+############################
+android/
+ios/
+
+############################
+# Expo Dev Client / EAS
+############################
+.eas/
+*.apk
+*.aab
+*.ipa
+
+############################
+# Backend (Node)
+############################
+backend/node_modules/
+backend/.env
+backend/.env.*
+
+############################
+# Supabase (local dev only)
+############################
+.supabase/
+
+############################
+# Misc
+############################
+coverage/
+*.sqlite
+*.db

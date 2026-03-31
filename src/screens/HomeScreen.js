@@ -1,242 +1,282 @@
-import React, { useMemo, useState } from "react";
-import { View, Text, FlatList, Pressable } from "react-native";
-import HomeTileButton from "../components/HomeTileButton";
-import TeamMemberRow from "../components/TeamMemberRow";
+import React, { useEffect, useState } from "react";
+import { View, Text, ScrollView, Pressable } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import PremiumTile from "../components/PremiumTile";
+import { theme } from "../theme/theme";
+import { supabase } from "../services/supabase";
 
 export default function HomeScreen({ navigation, role }) {
-    const userInitial = role === "manager" ? "M" : "S";
+    const isManager = role === "manager";
+    const [quickPageMembers, setQuickPageMembers] = useState([]);
 
-    const team = useMemo(
-        () => [
-            { id: "u1", name: "rock", role: "manager", initial: "R" },
-            { id: "u2", name: "arthur", role: "boh support", initial: "A" },
-            { id: "u3", name: "charlize", role: "server", initial: "C" },
-            { id: "u4", name: "kal", role: "security", initial: "K" },
-        ],
-        []
-    );
+    useEffect(() => {
+        const loadUsers = async () => {
+            const { data, error } = await supabase
+                .from("app_users")
+                .select("id, username, display_name, role, active")
+                .eq("active", true)
+                .order("display_name", { ascending: true });
 
-    const [selectedMemberId, setSelectedMemberId] = useState(team[0]?.id);
+            if (!error && data) {
+                const filtered = data.filter((u) => u.role !== "manager");
+                setQuickPageMembers(filtered);
+            }
+        };
 
-    const onPage = (member) => {
-        navigation.navigate("MemberChat", { member });
-    };
+        loadUsers();
+    }, []);
 
-    const TableLayoutPreview = () => {
-        return (
-            <View
-                style={{
-                    borderRadius: 18,
-                    backgroundColor: "rgba(255,255,255,0.65)",
-                    borderWidth: 1,
-                    borderColor: "rgba(0,0,0,0.06)",
-                    padding: 14,
-                }}
+    return (
+        <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+            <LinearGradient
+                colors={[theme.colors.bg, theme.colors.bg2]}
+                style={{ flex: 1 }}
             >
-                <Text style={{ fontWeight: "700", textAlign: "center", marginBottom: 10 }}>
-                    Table Layout
-                </Text>
-
-                <View style={{ flexDirection: "row", gap: 10 }}>
-                    <View
+                <ScrollView
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ padding: 18, paddingBottom: 30 }}
+                >
+                    {/* TITLE AT TOP */}
+                    <Text
                         style={{
-                            width: 70,
-                            height: 150,
-                            borderRadius: 10,
-                            backgroundColor: "rgba(255,255,255,0.9)",
-                            borderWidth: 2,
-                            borderColor: "rgba(120,120,255,0.25)",
+                            color: theme.colors.text,
+                            fontSize: 30,
+                            fontWeight: "900",
+                            marginBottom: 18,
                         }}
-                    />
-                    <View style={{ flex: 1, gap: 10 }}>
-                        <View style={{ flexDirection: "row", gap: 10 }}>
-                            <View
-                                style={{
-                                    flex: 1,
-                                    height: 45,
-                                    borderRadius: 10,
-                                    backgroundColor: "rgba(255,255,255,0.9)",
-                                    borderWidth: 2,
-                                    borderColor: "rgba(120,120,255,0.25)",
-                                }}
-                            />
-                            <View
-                                style={{
-                                    flex: 1,
-                                    height: 45,
-                                    borderRadius: 10,
-                                    backgroundColor: "rgba(255,255,255,0.9)",
-                                    borderWidth: 2,
-                                    borderColor: "rgba(120,120,255,0.25)",
-                                }}
-                            />
-                        </View>
+                    >
+                        ShiftLite
+                    </Text>
 
-                        <View style={{ flexDirection: "row", gap: 10 }}>
-                            <View
-                                style={{
-                                    width: 48,
-                                    height: 68,
-                                    borderRadius: 10,
-                                    backgroundColor: "rgba(255,255,255,0.9)",
-                                    borderWidth: 2,
-                                    borderColor: "rgba(120,120,255,0.25)",
-                                }}
-                            />
-                            <View
-                                style={{
-                                    width: 48,
-                                    height: 68,
-                                    borderRadius: 10,
-                                    backgroundColor: "rgba(255,255,255,0.9)",
-                                    borderWidth: 2,
-                                    borderColor: "rgba(120,120,255,0.25)",
-                                }}
-                            />
-                            <View
-                                style={{
-                                    width: 48,
-                                    height: 68,
-                                    borderRadius: 10,
-                                    backgroundColor: "rgba(255,255,255,0.9)",
-                                    borderWidth: 2,
-                                    borderColor: "rgba(120,120,255,0.25)",
-                                }}
-                            />
-                        </View>
-
+                    {/* QUICK PAGE */}
+                    <View style={{ marginBottom: 24 }}>
                         <View
                             style={{
-                                height: 55,
-                                borderRadius: 10,
-                                backgroundColor: "rgba(255,255,255,0.9)",
-                                borderWidth: 2,
-                                borderColor: "rgba(120,120,255,0.25)",
+                                flexDirection: "row",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 12,
                             }}
+                        >
+                            <Text
+                                style={{
+                                    color: theme.colors.text,
+                                    fontSize: 20,
+                                    fontWeight: "900",
+                                }}
+                            >
+                                Quick Page
+                            </Text>
+
+                            <View
+                                style={{
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 6,
+                                    borderRadius: theme.radius.pill,
+                                    backgroundColor: "rgba(124,92,255,0.14)",
+                                    borderWidth: 1,
+                                    borderColor: "rgba(124,92,255,0.35)",
+                                }}
+                            >
+                                <Text style={{ color: theme.colors.text, fontWeight: "800" }}>
+                                    {isManager ? "Manager" : "Staff"}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={{ gap: 10 }}>
+                            {quickPageMembers.map((member) => (
+                                <QuickPageCard
+                                    key={member.id}
+                                    name={member.display_name}
+                                    role={member.role}
+                                    status="Available"
+                                    statusColor={theme.colors.success}
+                                    onPress={() =>
+                                        navigation.navigate("MemberChat", {
+                                            member: {
+                                                id: member.id,
+                                                name: member.username,
+                                                display_name: member.display_name,
+                                                role: member.role,
+                                            },
+                                        })
+                                    }
+                                />
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* QUICK ACTIONS */}
+                    <SectionTitle title="Quick Actions" />
+
+                    <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+                        <PremiumTile
+                            title="Schedule"
+                            subtitle="Shifts"
+                            icon={
+                                <Ionicons
+                                    name="calendar-outline"
+                                    size={22}
+                                    color={theme.colors.text}
+                                />
+                            }
+                            onPress={() => navigation.navigate("Schedule")}
+                        />
+                        <PremiumTile
+                            title="Tasks"
+                            subtitle="Track"
+                            icon={
+                                <Feather
+                                    name="check-square"
+                                    size={21}
+                                    color={theme.colors.text}
+                                />
+                            }
+                            onPress={() => navigation.navigate("Tasks")}
                         />
                     </View>
 
-                    <View
-                        style={{
-                            width: 70,
-                            height: 150,
-                            borderRadius: 10,
-                            backgroundColor: "rgba(255,255,255,0.9)",
-                            borderWidth: 2,
-                            borderColor: "rgba(120,120,255,0.25)",
-                        }}
-                    />
-                </View>
-            </View>
-        );
-    };
+                    <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+                        <PremiumTile
+                            title="Inventory"
+                            subtitle="Stock"
+                            icon={
+                                <MaterialCommunityIcons
+                                    name="archive-outline"
+                                    size={22}
+                                    color={theme.colors.text}
+                                />
+                            }
+                            onPress={() => navigation.navigate("Inventory")}
+                        />
+                        <PremiumTile
+                            title="Announcements"
+                            subtitle="Updates"
+                            icon={
+                                <Ionicons
+                                    name="megaphone-outline"
+                                    size={22}
+                                    color={theme.colors.text}
+                                />
+                            }
+                            onPress={() => navigation.navigate("Messaging")}
+                        />
+                    </View>
 
+                    <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
+                        <PremiumTile
+                            title="Orders"
+                            subtitle="Track"
+                            icon={
+                                <Feather
+                                    name="shopping-bag"
+                                    size={21}
+                                    color={theme.colors.text}
+                                />
+                            }
+                            onPress={() => navigation.navigate("Orders")}
+                        />
+                        <PremiumTile
+                            title="Ping Inbox"
+                            subtitle="Alerts"
+                            icon={
+                                <Ionicons
+                                    name="notifications-outline"
+                                    size={22}
+                                    color={theme.colors.text}
+                                />
+                            }
+                            onPress={() => navigation.navigate("PingInbox")}
+                        />
+                    </View>
+
+                    <View style={{ flexDirection: "row", gap: 12, marginBottom: 20 }}>
+                        <PremiumTile
+                            title="Settings"
+                            subtitle="Preferences"
+                            icon={
+                                <Ionicons
+                                    name="settings-outline"
+                                    size={22}
+                                    color={theme.colors.text}
+                                />
+                            }
+                            onPress={() => navigation.navigate("Settings")}
+                        />
+                    </View>
+                </ScrollView>
+            </LinearGradient>
+        </View>
+    );
+}
+
+/* ---------- COMPONENTS ---------- */
+
+function SectionTitle({ title }) {
     return (
-        <View style={{ flex: 1, backgroundColor: "#DDE1FF" }}>
+        <Text
+            style={{
+                color: theme.colors.text,
+                fontSize: 18,
+                fontWeight: "800",
+                marginBottom: 12,
+            }}
+        >
+            {title}
+        </Text>
+    );
+}
+
+function QuickPageCard({ name, role, status, statusColor, onPress }) {
+    return (
+        <Pressable
+            onPress={onPress}
+            style={({ pressed }) => ({
+                backgroundColor: "rgba(255,255,255,0.05)",
+                borderRadius: 18,
+                padding: 14,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.08)",
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+            })}
+        >
             <View
                 style={{
-                    paddingTop: 14,
-                    paddingHorizontal: 16,
-                    paddingBottom: 10,
                     flexDirection: "row",
-                    alignItems: "center",
                     justifyContent: "space-between",
                 }}
             >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <View
+                <View>
+                    <Text
                         style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: 4,
-                            backgroundColor: "rgba(255,255,255,0.9)",
-                            borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.08)",
-                        }}
-                    />
-                    <Text style={{ fontWeight: "800", fontSize: 16 }}>Club GBC</Text>
-                </View>
-
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <Text style={{ fontWeight: "700" }}>User Profile</Text>
-                    <View
-                        style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: 18,
-                            backgroundColor: "rgba(0,0,0,0.15)",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            borderWidth: 2,
-                            borderColor: "rgba(255,255,255,0.85)",
+                            color: theme.colors.text,
+                            fontWeight: "800",
+                            fontSize: 16,
                         }}
                     >
-                        <Text style={{ fontWeight: "900" }}>{userInitial}</Text>
-                    </View>
+                        {name}
+                    </Text>
+                    <Text style={{ color: theme.colors.muted }}>{role}</Text>
                 </View>
+
+                <Text style={{ color: statusColor, fontWeight: "800" }}>{status}</Text>
             </View>
 
-            <View style={{ paddingHorizontal: 16, gap: 14 }}>
-                <TableLayoutPreview />
-
-                <View style={{ flexDirection: "row", gap: 14 }}>
-                    <View style={{ flex: 1 }}>
-                        <FlatList
-                            data={team}
-                            keyExtractor={(item) => item.id}
-                            scrollEnabled={false}
-                            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-                            renderItem={({ item }) => (
-                                <TeamMemberRow
-                                    member={item}
-                                    selected={item.id === selectedMemberId}
-                                    onSelect={() => setSelectedMemberId(item.id)}
-                                    onPage={() => onPage(item)}
-                                />
-                            )}
-                        />
-                    </View>
-
-                    <View style={{ width: 110, gap: 10, justifyContent: "center" }}>
-                        {team.slice(0, 3).map((m) => (
-                            <Pressable
-                                key={m.id}
-                                onPress={() => onPage(m)}
-                                style={{
-                                    paddingVertical: 12,
-                                    borderRadius: 999,
-                                    backgroundColor: "rgba(255,255,255,0.65)",
-                                    borderWidth: 1,
-                                    borderColor: "rgba(0,0,0,0.06)",
-                                    alignItems: "center",
-                                }}
-                            >
-                                <Text style={{ fontWeight: "700" }}>Page</Text>
-                            </Pressable>
-                        ))}
-                    </View>
-                </View>
-
-                <View style={{ flexDirection: "row", gap: 12 }}>
-                    <HomeTileButton label="Schedule" onPress={() => navigation.navigate("Schedule")} />
-                    <HomeTileButton label="Announcements" onPress={() => navigation.navigate("Messaging")} />
-                </View>
-
-                <View style={{ flexDirection: "row", gap: 12 }}>
-                    <HomeTileButton label="Inventory" onPress={() => navigation.navigate("Inventory")} />
-                    <HomeTileButton label="Orders" onPress={() => navigation.navigate("Orders")} />
-                </View>
-
-                <View style={{ flexDirection: "row", gap: 12 }}>
-                    <HomeTileButton label="Tasks" onPress={() => navigation.navigate("Tasks")} />
-                    <HomeTileButton label="Ping Inbox" onPress={() => navigation.navigate("PingInbox")} />
-                </View>
-
-                <View style={{ flexDirection: "row", gap: 12, marginBottom: 18 }}>
-                    <HomeTileButton label="Settings" onPress={() => navigation.navigate("Settings")} />
-                    <View style={{ flex: 1 }} />
-                </View>
+            <View
+                style={{
+                    marginTop: 10,
+                    paddingVertical: 10,
+                    borderRadius: 12,
+                    backgroundColor: "rgba(124,92,255,0.16)",
+                    alignItems: "center",
+                }}
+            >
+                <Text style={{ color: theme.colors.text, fontWeight: "800" }}>
+                    Page
+                </Text>
             </View>
-        </View>
+        </Pressable>
     );
 }
