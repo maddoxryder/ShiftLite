@@ -12,10 +12,26 @@ import TasksScreen from "../screens/TasksScreen";
 import InventoryScreen from "../screens/InventoryScreen";
 import MessagingScreen from "../screens/MessagingScreen";
 
-import { getCurrentSession, getCurrentUserProfile, signOut } from "../services/auth";
+import {
+  getCurrentSession,
+  getCurrentUserProfile,
+  signOut,
+} from "../services/auth";
 import { supabase } from "../services/supabase";
 
 const Stack = createNativeStackNavigator();
+
+const darkHeaderOptions = {
+  headerStyle: {
+    backgroundColor: "#070B14",
+  },
+  headerTintColor: "#F8FAFF",
+  headerShadowVisible: false,
+  headerTitleStyle: {
+    fontWeight: "800",
+  },
+  headerBackTitleVisible: false,
+};
 
 export default function AppNavigator() {
   const [booting, setBooting] = useState(true);
@@ -36,6 +52,7 @@ export default function AppNavigator() {
         if (!mounted) return;
 
         setSession(currentSession);
+
         if (currentSession) {
           await loadProfile();
         }
@@ -52,6 +69,7 @@ export default function AppNavigator() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
+
       if (nextSession) {
         await loadProfile();
       } else {
@@ -80,7 +98,7 @@ export default function AppNavigator() {
   if (booting) return null;
 
   return (
-      <Stack.Navigator>
+      <Stack.Navigator screenOptions={darkHeaderOptions}>
         {!session || !profile ? (
             <Stack.Screen name="Login" options={{ headerShown: false }}>
               {(props) => <LoginScreen {...props} onLogin={handleLogin} />}
@@ -100,11 +118,15 @@ export default function AppNavigator() {
 
               <Stack.Screen
                   name="MemberChat"
-                  component={MemberChatScreen}
-                  options={{ title: "Page" }}
-              />
+                  options={{ title: "Page Member" }}
+              >
+                {(props) => <MemberChatScreen {...props} />}
+              </Stack.Screen>
 
-              <Stack.Screen name="PingInbox" options={{ title: "Ping Inbox" }}>
+              <Stack.Screen
+                  name="PingInbox"
+                  options={{ title: "Ping Inbox" }}
+              >
                 {(props) => (
                     <PingInboxScreen
                         {...props}
@@ -114,9 +136,17 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
 
-              <Stack.Screen name="Orders" component={OrdersScreen} />
+              <Stack.Screen
+                  name="Orders"
+                  options={{ title: "Orders" }}
+              >
+                {(props) => <OrdersScreen {...props} />}
+              </Stack.Screen>
 
-              <Stack.Screen name="Settings" options={{ title: "Settings" }}>
+              <Stack.Screen
+                  name="Settings"
+                  options={{ title: "Settings" }}
+              >
                 {(props) => (
                     <SettingsScreen
                         {...props}
@@ -126,7 +156,10 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
 
-              <Stack.Screen name="Schedule" options={{ title: "Schedule" }}>
+              <Stack.Screen
+                  name="Schedule"
+                  options={{ title: "Schedule" }}
+              >
                 {(props) => (
                     <ScheduleScreen
                         {...props}
@@ -136,7 +169,10 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
 
-              <Stack.Screen name="Tasks" options={{ title: "Tasks" }}>
+              <Stack.Screen
+                  name="Tasks"
+                  options={{ title: "Tasks" }}
+              >
                 {(props) => (
                     <TasksScreen
                         {...props}
@@ -146,7 +182,10 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
 
-              <Stack.Screen name="Inventory" options={{ title: "Inventory" }}>
+              <Stack.Screen
+                  name="Inventory"
+                  options={{ title: "Inventory" }}
+              >
                 {(props) => (
                     <InventoryScreen
                         {...props}
@@ -156,7 +195,10 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
 
-              <Stack.Screen name="Messaging" options={{ title: "Announcements" }}>
+              <Stack.Screen
+                  name="Messaging"
+                  options={{ title: "Announcements" }}
+              >
                 {(props) => (
                     <MessagingScreen
                         {...props}

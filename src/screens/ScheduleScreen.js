@@ -1,7 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, FlatList, Pressable, TextInput, Modal } from "react-native";
+import {
+    View,
+    Text,
+    FlatList,
+    Pressable,
+    TextInput,
+    Modal,
+    ScrollView,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { getItem, setItem } from "../services/storage";
 import { days, roles, seed } from "../data/seed";
+import { theme } from "../theme/theme";
 
 const STORAGE_KEY = "scheduleData";
 
@@ -15,16 +25,13 @@ export default function ScheduleScreen({ role }) {
     const [items, setItems] = useState([]);
     const [booting, setBooting] = useState(true);
 
-    // filters (staff + manager both)
     const [day, setDay] = useState("All");
     const [jobRole, setJobRole] = useState("All");
     const [search, setSearch] = useState("");
 
-    // modal editing (manager only)
     const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState(null); // item or null for add
+    const [editing, setEditing] = useState(null);
 
-    // form state
     const [fDay, setFDay] = useState("Mon");
     const [fStart, setFStart] = useState("09:00");
     const [fEnd, setFEnd] = useState("17:00");
@@ -95,7 +102,9 @@ export default function ScheduleScreen({ role }) {
         };
 
         if (editing) {
-            setItems((prev) => prev.map((x) => (x.id === editing.id ? { ...x, ...cleaned } : x)));
+            setItems((prev) =>
+                prev.map((x) => (x.id === editing.id ? { ...x, ...cleaned } : x))
+            );
         } else {
             setItems((prev) => [{ id: makeId("s"), ...cleaned }, ...prev]);
         }
@@ -106,154 +115,232 @@ export default function ScheduleScreen({ role }) {
         setItems((prev) => prev.filter((x) => x.id !== id));
     };
 
-    const ChipRow = ({ options, value, onChange }) => (
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {options.map((opt) => {
-                const selected = opt === value;
-                return (
-                    <Pressable
-                        key={opt}
-                        onPress={() => onChange(opt)}
-                        style={{
-                            paddingVertical: 8,
-                            paddingHorizontal: 12,
-                            borderRadius: 999,
-                            borderWidth: 1,
-                            borderColor: selected ? "#111" : "rgba(0,0,0,0.15)",
-                            backgroundColor: selected ? "#111" : "rgba(255,255,255,0.65)",
-                        }}
-                    >
-                        <Text style={{ color: selected ? "#fff" : "#111", fontWeight: "700" }}>{opt}</Text>
-                    </Pressable>
-                );
-            })}
-        </View>
-    );
-
     if (booting) return null;
 
     return (
-        <View style={{ flex: 1, padding: 16, gap: 12, backgroundColor: "#F6F7FF" }}>
-            <Text style={{ fontSize: 18, fontWeight: "900" }}>
-                Schedule {isManager ? "(Manager)" : "(Staff)"}
-            </Text>
-
-            {/* search */}
-            <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search person, role, notes..."
-                style={{
-                    borderWidth: 1,
-                    borderColor: "rgba(0,0,0,0.12)",
-                    borderRadius: 12,
-                    padding: 12,
-                    backgroundColor: "#fff",
-                }}
-            />
-
-            <Text style={{ fontWeight: "800" }}>Day</Text>
-            <ChipRow options={days} value={day} onChange={setDay} />
-
-            <Text style={{ fontWeight: "800" }}>Role</Text>
-            <ChipRow options={roles} value={jobRole} onChange={setJobRole} />
-
-            {isManager ? (
-                <Pressable
-                    onPress={openAdd}
+        <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ padding: 18, paddingBottom: 30 }}
+            >
+                <Text
                     style={{
-                        padding: 14,
-                        borderRadius: 12,
-                        backgroundColor: "#111",
-                        alignItems: "center",
+                        color: theme.colors.text,
+                        fontSize: 28,
+                        fontWeight: "900",
+                        marginBottom: 6,
                     }}
                 >
-                    <Text style={{ color: "#fff", fontWeight: "800" }}>+ Add Shift</Text>
-                </Pressable>
-            ) : null}
+                    Schedule
+                </Text>
 
-            <FlatList
-                data={filtered}
-                keyExtractor={(x) => x.id}
-                ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-                renderItem={({ item }) => (
+                <Text
+                    style={{
+                        color: theme.colors.muted,
+                        marginBottom: 18,
+                        fontSize: 14,
+                    }}
+                >
+                    {isManager
+                        ? "Manage shifts, coverage, and staffing."
+                        : "View shifts, roles, and who is on the floor."}
+                </Text>
+
+                {/* Search */}
+                <View
+                    style={{
+                        backgroundColor: theme.colors.surface,
+                        borderRadius: theme.radius.lg,
+                        borderWidth: 1,
+                        borderColor: theme.colors.border,
+                        paddingHorizontal: 14,
+                        paddingVertical: 12,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 16,
+                    }}
+                >
+                    <Ionicons
+                        name="search-outline"
+                        size={18}
+                        color={theme.colors.muted}
+                    />
+                    <TextInput
+                        value={search}
+                        onChangeText={setSearch}
+                        placeholder="Search person, role, notes..."
+                        placeholderTextColor={theme.colors.muted}
+                        style={{
+                            flex: 1,
+                            color: theme.colors.text,
+                        }}
+                    />
+                </View>
+
+                <SectionTitle title="Day" />
+                <ChipRow options={days} value={day} onChange={setDay} />
+
+                <View style={{ height: 14 }} />
+
+                <SectionTitle title="Role" />
+                <ChipRow options={roles} value={jobRole} onChange={setJobRole} />
+
+                {isManager ? (
+                    <Pressable
+                        onPress={openAdd}
+                        style={({ pressed }) => ({
+                            marginTop: 18,
+                            backgroundColor: theme.colors.accent,
+                            borderRadius: theme.radius.md,
+                            paddingVertical: 14,
+                            alignItems: "center",
+                            transform: [{ scale: pressed ? 0.985 : 1 }],
+                        })}
+                    >
+                        <Text style={{ color: "#fff", fontWeight: "900" }}>+ Add Shift</Text>
+                    </Pressable>
+                ) : null}
+
+                <View style={{ marginTop: 18, gap: 12 }}>
+                    {filtered.map((item) => (
+                        <ShiftCard
+                            key={item.id}
+                            item={item}
+                            isManager={isManager}
+                            onEdit={() => openEdit(item)}
+                            onDelete={() => remove(item.id)}
+                        />
+                    ))}
+
+                    {filtered.length === 0 ? (
+                        <View
+                            style={{
+                                backgroundColor: theme.colors.surface,
+                                borderRadius: theme.radius.lg,
+                                borderWidth: 1,
+                                borderColor: theme.colors.border,
+                                padding: 18,
+                                alignItems: "center",
+                            }}
+                        >
+                            <Text style={{ color: theme.colors.muted }}>
+                                No shifts match your filters.
+                            </Text>
+                        </View>
+                    ) : null}
+                </View>
+            </ScrollView>
+
+            {/* Modal */}
+            <Modal
+                visible={modalOpen}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setModalOpen(false)}
+            >
+                <View
+                    style={{
+                        flex: 1,
+                        backgroundColor: "rgba(0,0,0,0.55)",
+                        justifyContent: "flex-end",
+                    }}
+                >
                     <View
                         style={{
-                            backgroundColor: "#fff",
-                            borderRadius: 14,
-                            padding: 14,
-                            borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.06)",
+                            backgroundColor: theme.colors.surfaceStrong,
+                            borderTopLeftRadius: theme.radius.xl,
+                            borderTopRightRadius: theme.radius.xl,
+                            padding: 18,
+                            borderTopWidth: 1,
+                            borderColor: theme.colors.border,
                         }}
                     >
-                        <Text style={{ fontWeight: "900" }}>
-                            {item.day} • {item.start}–{item.end}
+                        <Text
+                            style={{
+                                color: theme.colors.text,
+                                fontSize: 20,
+                                fontWeight: "900",
+                                marginBottom: 14,
+                            }}
+                        >
+                            {editing ? "Edit Shift" : "Add Shift"}
                         </Text>
-                        <Text style={{ marginTop: 6, fontWeight: "800" }}>{item.person}</Text>
-                        <Text style={{ opacity: 0.7 }}>{item.role}</Text>
-                        {!!item.notes && <Text style={{ marginTop: 6, opacity: 0.75 }}>{item.notes}</Text>}
 
-                        {isManager ? (
-                            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
-                                <Pressable
-                                    onPress={() => openEdit(item)}
-                                    style={{
-                                        flex: 1,
-                                        padding: 12,
-                                        borderRadius: 12,
-                                        backgroundColor: "rgba(17,17,17,0.08)",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Text style={{ fontWeight: "800" }}>Edit</Text>
-                                </Pressable>
-                                <Pressable
-                                    onPress={() => remove(item.id)}
-                                    style={{
-                                        flex: 1,
-                                        padding: 12,
-                                        borderRadius: 12,
-                                        backgroundColor: "rgba(220,0,0,0.10)",
-                                        alignItems: "center",
-                                    }}
-                                >
-                                    <Text style={{ fontWeight: "900", color: "crimson" }}>Delete</Text>
-                                </Pressable>
-                            </View>
-                        ) : null}
-                    </View>
-                )}
-            />
+                        <SectionTitle title="Day" compact />
+                        <ChipRow
+                            options={days.filter((d) => d !== "All")}
+                            value={fDay}
+                            onChange={setFDay}
+                        />
 
-            {/* Manager edit modal */}
-            <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" }}>
-                    <View style={{ backgroundColor: "#fff", padding: 16, borderTopLeftRadius: 18, borderTopRightRadius: 18, gap: 10 }}>
-                        <Text style={{ fontSize: 16, fontWeight: "900" }}>{editing ? "Edit Shift" : "Add Shift"}</Text>
-
-                        <Text style={{ fontWeight: "800" }}>Day</Text>
-                        <ChipRow options={days.filter((d) => d !== "All")} value={fDay} onChange={setFDay} />
-
-                        <Text style={{ fontWeight: "800" }}>Time (24h)</Text>
+                        <SectionTitle title="Time (24h)" compact />
                         <View style={{ flexDirection: "row", gap: 10 }}>
-                            <TextInput value={fStart} onChangeText={setFStart} placeholder="09:00" style={{ flex: 1, borderWidth: 1, borderColor: "rgba(0,0,0,0.12)", borderRadius: 12, padding: 12 }} />
-                            <TextInput value={fEnd} onChangeText={setFEnd} placeholder="17:00" style={{ flex: 1, borderWidth: 1, borderColor: "rgba(0,0,0,0.12)", borderRadius: 12, padding: 12 }} />
+                            <StyledInput
+                                value={fStart}
+                                onChangeText={setFStart}
+                                placeholder="09:00"
+                                flex
+                            />
+                            <StyledInput
+                                value={fEnd}
+                                onChangeText={setFEnd}
+                                placeholder="17:00"
+                                flex
+                            />
                         </View>
 
-                        <Text style={{ fontWeight: "800" }}>Person</Text>
-                        <TextInput value={fPerson} onChangeText={setFPerson} placeholder="Ava" style={{ borderWidth: 1, borderColor: "rgba(0,0,0,0.12)", borderRadius: 12, padding: 12 }} />
+                        <SectionTitle title="Person" compact />
+                        <StyledInput
+                            value={fPerson}
+                            onChangeText={setFPerson}
+                            placeholder="Ava"
+                        />
 
-                        <Text style={{ fontWeight: "800" }}>Role</Text>
-                        <ChipRow options={roles.filter((r) => r !== "All")} value={fRole} onChange={setFRole} />
+                        <SectionTitle title="Role" compact />
+                        <ChipRow
+                            options={roles.filter((r) => r !== "All")}
+                            value={fRole}
+                            onChange={setFRole}
+                        />
 
-                        <Text style={{ fontWeight: "800" }}>Notes</Text>
-                        <TextInput value={fNotes} onChangeText={setFNotes} placeholder="Optional notes..." style={{ borderWidth: 1, borderColor: "rgba(0,0,0,0.12)", borderRadius: 12, padding: 12 }} />
+                        <SectionTitle title="Notes" compact />
+                        <StyledInput
+                            value={fNotes}
+                            onChangeText={setFNotes}
+                            placeholder="Optional notes..."
+                        />
 
-                        <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                            <Pressable onPress={() => setModalOpen(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.08)", alignItems: "center" }}>
-                                <Text style={{ fontWeight: "900" }}>Cancel</Text>
+                        <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
+                            <Pressable
+                                onPress={() => setModalOpen(false)}
+                                style={({ pressed }) => ({
+                                    flex: 1,
+                                    paddingVertical: 14,
+                                    borderRadius: theme.radius.md,
+                                    backgroundColor: "rgba(255,255,255,0.06)",
+                                    borderWidth: 1,
+                                    borderColor: theme.colors.border,
+                                    alignItems: "center",
+                                    transform: [{ scale: pressed ? 0.985 : 1 }],
+                                })}
+                            >
+                                <Text style={{ color: theme.colors.text, fontWeight: "800" }}>
+                                    Cancel
+                                </Text>
                             </Pressable>
-                            <Pressable onPress={save} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: "#111", alignItems: "center" }}>
+
+                            <Pressable
+                                onPress={save}
+                                style={({ pressed }) => ({
+                                    flex: 1,
+                                    paddingVertical: 14,
+                                    borderRadius: theme.radius.md,
+                                    backgroundColor: theme.colors.accent,
+                                    alignItems: "center",
+                                    transform: [{ scale: pressed ? 0.985 : 1 }],
+                                })}
+                            >
                                 <Text style={{ color: "#fff", fontWeight: "900" }}>Save</Text>
                             </Pressable>
                         </View>
@@ -262,4 +349,226 @@ export default function ScheduleScreen({ role }) {
             </Modal>
         </View>
     );
+}
+
+function SectionTitle({ title, compact = false }) {
+    return (
+        <Text
+            style={{
+                color: theme.colors.text,
+                fontSize: compact ? 15 : 17,
+                fontWeight: "800",
+                marginBottom: 10,
+                marginTop: compact ? 14 : 0,
+            }}
+        >
+            {title}
+        </Text>
+    );
+}
+
+function StyledInput({ value, onChangeText, placeholder, flex = false }) {
+    return (
+        <TextInput
+            value={value}
+            onChangeText={onChangeText}
+            placeholder={placeholder}
+            placeholderTextColor={theme.colors.muted}
+            style={{
+                flex: flex ? 1 : undefined,
+                backgroundColor: theme.colors.surface,
+                borderRadius: theme.radius.md,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+            }}
+        />
+    );
+}
+
+function ChipRow({ options, value, onChange }) {
+    return (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {options.map((opt) => {
+                const selected = opt === value;
+                return (
+                    <Pressable
+                        key={opt}
+                        onPress={() => onChange(opt)}
+                        style={({ pressed }) => ({
+                            paddingVertical: 9,
+                            paddingHorizontal: 14,
+                            borderRadius: theme.radius.pill,
+                            borderWidth: 1,
+                            borderColor: selected
+                                ? "rgba(124,92,255,0.45)"
+                                : theme.colors.border,
+                            backgroundColor: selected
+                                ? "rgba(124,92,255,0.16)"
+                                : "rgba(255,255,255,0.04)",
+                            transform: [{ scale: pressed ? 0.98 : 1 }],
+                        })}
+                    >
+                        <Text
+                            style={{
+                                color: selected ? theme.colors.text : theme.colors.muted,
+                                fontWeight: "700",
+                            }}
+                        >
+                            {opt}
+                        </Text>
+                    </Pressable>
+                );
+            })}
+        </View>
+    );
+}
+
+function ShiftCard({ item, isManager, onEdit, onDelete }) {
+    const roleColor = getRoleColor(item.role);
+
+    return (
+        <View
+            style={{
+                backgroundColor: theme.colors.surface,
+                borderRadius: theme.radius.lg,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                padding: 16,
+            }}
+        >
+            <View
+                style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 12,
+                }}
+            >
+                <View style={{ flex: 1 }}>
+                    <Text
+                        style={{
+                            color: theme.colors.text,
+                            fontSize: 18,
+                            fontWeight: "900",
+                        }}
+                    >
+                        {item.person}
+                    </Text>
+
+                    <Text
+                        style={{
+                            color: theme.colors.muted,
+                            marginTop: 4,
+                        }}
+                    >
+                        {item.day} • {item.start} – {item.end}
+                    </Text>
+                </View>
+
+                <View
+                    style={{
+                        paddingHorizontal: 10,
+                        paddingVertical: 6,
+                        borderRadius: theme.radius.pill,
+                        backgroundColor: roleColor.bg,
+                        borderWidth: 1,
+                        borderColor: roleColor.border,
+                    }}
+                >
+                    <Text style={{ color: roleColor.text, fontWeight: "800" }}>
+                        {item.role}
+                    </Text>
+                </View>
+            </View>
+
+            {!!item.notes ? (
+                <Text
+                    style={{
+                        color: theme.colors.muted,
+                        marginTop: 12,
+                        lineHeight: 20,
+                    }}
+                >
+                    {item.notes}
+                </Text>
+            ) : null}
+
+            {isManager ? (
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+                    <Pressable
+                        onPress={onEdit}
+                        style={({ pressed }) => ({
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: theme.radius.md,
+                            backgroundColor: "rgba(255,255,255,0.06)",
+                            borderWidth: 1,
+                            borderColor: theme.colors.border,
+                            alignItems: "center",
+                            transform: [{ scale: pressed ? 0.985 : 1 }],
+                        })}
+                    >
+                        <Text style={{ color: theme.colors.text, fontWeight: "800" }}>
+                            Edit
+                        </Text>
+                    </Pressable>
+
+                    <Pressable
+                        onPress={onDelete}
+                        style={({ pressed }) => ({
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: theme.radius.md,
+                            backgroundColor: "rgba(255,92,122,0.14)",
+                            borderWidth: 1,
+                            borderColor: "rgba(255,92,122,0.35)",
+                            alignItems: "center",
+                            transform: [{ scale: pressed ? 0.985 : 1 }],
+                        })}
+                    >
+                        <Text style={{ color: theme.colors.danger, fontWeight: "900" }}>
+                            Delete
+                        </Text>
+                    </Pressable>
+                </View>
+            ) : null}
+        </View>
+    );
+}
+
+function getRoleColor(role) {
+    const r = role?.toLowerCase() || "";
+
+    if (r.includes("security")) {
+        return {
+            bg: "rgba(255,92,122,0.14)",
+            border: "rgba(255,92,122,0.35)",
+            text: theme.colors.danger,
+        };
+    }
+
+    if (r.includes("bartender")) {
+        return {
+            bg: "rgba(76,201,240,0.14)",
+            border: "rgba(76,201,240,0.35)",
+            text: theme.colors.accent2,
+        };
+    }
+
+    if (r.includes("host")) {
+        return {
+            bg: "rgba(255,184,77,0.14)",
+            border: "rgba(255,184,77,0.35)",
+            text: theme.colors.warning,
+        };
+    }
+
+    return {
+        bg: "rgba(124,92,255,0.14)",
+        border: "rgba(124,92,255,0.35)",
+        text: theme.colors.accent,
+    };
 }

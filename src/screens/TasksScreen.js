@@ -1,12 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, FlatList, Pressable, TextInput, Modal } from "react-native";
+import {
+    View,
+    Text,
+    Pressable,
+    TextInput,
+    Modal,
+    ScrollView,
+} from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { getItem, setItem } from "../services/storage";
-import { seed } from "../data/seed";
+import { roles, seed } from "../data/seed";
+import { theme } from "../theme/theme";
 
 const STORAGE_KEY = "tasksData";
-
-const statuses = ["All", "open", "in-progress", "done"];
 const priorities = ["All", "low", "medium", "high"];
+const statuses = ["All", "open", "in progress", "complete"];
 
 function makeId(prefix = "t") {
     return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
@@ -15,29 +23,27 @@ function makeId(prefix = "t") {
 export default function TasksScreen({ role }) {
     const isManager = role === "manager";
 
-    const [booting, setBooting] = useState(true);
     const [items, setItems] = useState([]);
+    const [booting, setBooting] = useState(true);
 
-    // filters
-    const [status, setStatus] = useState("All");
-    const [priority, setPriority] = useState("All");
     const [search, setSearch] = useState("");
+    const [jobRole, setJobRole] = useState("All");
+    const [priority, setPriority] = useState("All");
+    const [status, setStatus] = useState("All");
 
-    // modal (manager)
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
 
-    // form
     const [fTitle, setFTitle] = useState("");
-    const [fAssignee, setFAssignee] = useState("");
+    const [fAssignedTo, setFAssignedTo] = useState("server");
+    const [fPriority, setFPriority] = useState("medium");
     const [fStatus, setFStatus] = useState("open");
-    const [fPriority, setFPriority] = useState("low");
     const [fNotes, setFNotes] = useState("");
 
     useEffect(() => {
         (async () => {
             const saved = await getItem(STORAGE_KEY, null);
-            setItems(saved ?? seed.tasks ?? []);
+            setItems(saved ?? seed.tasks);
             setBooting(false);
         })();
     }, []);
@@ -49,20 +55,362 @@ export default function TasksScreen({ role }) {
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
-        return items.filter((t) => {
-            const matchStatus = status === "All" ? true : t.status === status;
-            const matchPriority = priority === "All" ? true : t.priority === priority;
+
+        return items.filter((item) => {
+            const matchRole = jobRole === "All" ? true : item.assignedTo === jobRole;
+            const matchPriority = priority === "All" ? true : item.priority === priority;
+            const matchStatus = status === "All" ? true : item.status === status;
             const matchSearch =
                 !q ||
-                (t.title ?? "").toLowerCase().includes(q) ||
-                (t.assignee ?? "").toLowerCase().includes(q) ||
-                (t.notes ?? "").toLowerCase().includes(q);
+                (item.title ?? "").toLowerCase().includes(q) ||
+                (item.assignedTo ?? "").toLowerCase().includes(q) ||
+                (item.priority ?? "").toLowerCase().includes(q) ||
+                (item.status ?? "").toLowerCase().includes(q) ||
+                (item.notes ?? "").toLowerCase().includes(q);
 
-            return matchStatus && matchPriority && matchSearch;
+            return matchRole && matchPriority && matchStatus && matchSearch;
         });
-    }, [items, status, priority, search]);
+    }, [items, search, jobRole, priority, status]);
 
-    const ChipRow = ({ options, value, onChange }) => (
+    const summary = useMemo(() => {
+        const total = items.length;
+        const open = items.filter((x) => x.status === "open").length;
+        const inProgress = items.filter((x) => x.status === "in progress").length;
+        const complete = items.filter((x) => x.status === "complete").length;
+        return { total, open, inProgress, complete };
+    }, [items]);
+
+    const openAdd = () => {
+        setEditing(null);
+        setFTitle("");
+        setFAssignedTo("server");
+        setFPriority("medium");
+        setFStatus("open");
+        setFNotes("");
+        setModalOpen(true);
+    };
+
+    const openEdit = (item) => {
+        setEditing(item);
+        setFTitle(item.title ?? "");
+        setFAssignedTo(item.assignedTo ?? "server");
+        setFPriority(item.priority ?? "medium");
+        setFStatus(item.status ?? "open");
+        setFNotes(item.notes ?? "");
+        setModalOpen(true);
+    };
+
+    const save = () => {
+        const cleaned = {
+            title: fTitle.trim() || "New Task",
+            assignedTo: fAssignedTo,
+            priority: fPriority,
+            status: fStatus,
+            notes: fNotes,
+        };
+
+        if (editing) {
+            setItems((prev) =>
+                prev.map((x) => (x.id === editing.id ? { ...x, ...cleaned } : x))
+            );
+        } else {
+            setItems((prev) => [{ id: makeId("t"), ...cleaned }, ...prev]);
+        }
+
+        setModalOpen(false);
+    };
+
+    const remove = (id) => {
+        setItems((prev) => prev.filter((x) => x.id !== id));
+    };
+
+    const markComplete = (id) => {
+        setItems((prev) =>
+            prev.map((x) =>
+                x.id === id ? { ...x, status: "complete" } : x
+            )
+        );
+    };
+
+    if (booting) return null;
+
+    return (
+        <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ padding: 18, paddingBottom: 30 }}
+            >
+                <Text
+                    style={{
+                        color: theme.colors.text,
+                        fontSize: 28,
+                        fontWeight: "900",
+                        marginBottom: 6,
+                    }}
+                >
+                    Tasks
+                </Text>
+
+                <Text
+                    style={{
+                        color: theme.colors.muted,
+                        fontSize: 14,
+                        marginBottom: 18,
+                    }}
+                >
+                    {isManager
+                        ? "Create, assign, and track operational tasks."
+                        : "View your tasks and update completion status."}
+                </Text>
+
+                {/* Summary */}
+                <View style={{ flexDirection: "row", gap: 12, marginBottom: 18 }}>
+                    <SummaryCard label="Total" value={summary.total} />
+                    <SummaryCard label="Open" value={summary.open} accent="danger" />
+                    <SummaryCard label="Active" value={summary.inProgress} />
+                    <SummaryCard label="Done" value={summary.complete} accent="success" />
+                </View>
+
+                {/* Search */}
+                <View
+                    style={{
+                        backgroundColor: theme.colors.surface,
+                        borderRadius: theme.radius.lg,
+                        borderWidth: 1,
+                        borderColor: theme.colors.border,
+                        paddingHorizontal: 14,
+                        paddingVertical: 12,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 16,
+                    }}
+                >
+                    <Ionicons
+                        name="search-outline"
+                        size={18}
+                        color={theme.colors.muted}
+                    />
+                    <TextInput
+                        value={search}
+                        onChangeText={setSearch}
+                        placeholder="Search tasks..."
+                        placeholderTextColor={theme.colors.muted}
+                        style={{
+                            flex: 1,
+                            color: theme.colors.text,
+                        }}
+                    />
+                </View>
+
+                <SectionTitle title="Assigned Role" />
+                <ChipRow options={roles} value={jobRole} onChange={setJobRole} />
+
+                <View style={{ height: 14 }} />
+
+                <SectionTitle title="Priority" />
+                <ChipRow options={priorities} value={priority} onChange={setPriority} />
+
+                <View style={{ height: 14 }} />
+
+                <SectionTitle title="Status" />
+                <ChipRow options={statuses} value={status} onChange={setStatus} />
+
+                {isManager ? (
+                    <Pressable
+                        onPress={openAdd}
+                        style={({ pressed }) => ({
+                            marginTop: 18,
+                            backgroundColor: theme.colors.accent,
+                            borderRadius: theme.radius.md,
+                            paddingVertical: 14,
+                            alignItems: "center",
+                            transform: [{ scale: pressed ? 0.985 : 1 }],
+                        })}
+                    >
+                        <Text style={{ color: "#fff", fontWeight: "900" }}>+ Add Task</Text>
+                    </Pressable>
+                ) : null}
+
+                <View style={{ marginTop: 18, gap: 12 }}>
+                    {filtered.map((item) => (
+                        <TaskCard
+                            key={item.id}
+                            item={item}
+                            isManager={isManager}
+                            onEdit={() => openEdit(item)}
+                            onDelete={() => remove(item.id)}
+                            onComplete={() => markComplete(item.id)}
+                        />
+                    ))}
+
+                    {filtered.length === 0 ? (
+                        <View
+                            style={{
+                                backgroundColor: theme.colors.surface,
+                                borderRadius: theme.radius.lg,
+                                borderWidth: 1,
+                                borderColor: theme.colors.border,
+                                padding: 18,
+                                alignItems: "center",
+                            }}
+                        >
+                            <Text style={{ color: theme.colors.muted }}>
+                                No tasks match your filters.
+                            </Text>
+                        </View>
+                    ) : null}
+                </View>
+            </ScrollView>
+
+            {/* Modal */}
+            <Modal
+                visible={modalOpen}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setModalOpen(false)}
+            >
+                <View
+                    style={{
+                        flex: 1,
+                        backgroundColor: "rgba(0,0,0,0.55)",
+                        justifyContent: "flex-end",
+                    }}
+                >
+                    <View
+                        style={{
+                            backgroundColor: theme.colors.surfaceStrong,
+                            borderTopLeftRadius: theme.radius.xl,
+                            borderTopRightRadius: theme.radius.xl,
+                            padding: 18,
+                            borderTopWidth: 1,
+                            borderColor: theme.colors.border,
+                        }}
+                    >
+                        <Text
+                            style={{
+                                color: theme.colors.text,
+                                fontSize: 20,
+                                fontWeight: "900",
+                                marginBottom: 14,
+                            }}
+                        >
+                            {editing ? "Edit Task" : "Add Task"}
+                        </Text>
+
+                        <SectionTitle title="Task Title" compact />
+                        <StyledInput
+                            value={fTitle}
+                            onChangeText={setFTitle}
+                            placeholder="Restock bar fridge"
+                        />
+
+                        <SectionTitle title="Assigned Role" compact />
+                        <ChipRow
+                            options={roles.filter((r) => r !== "All")}
+                            value={fAssignedTo}
+                            onChange={setFAssignedTo}
+                        />
+
+                        <SectionTitle title="Priority" compact />
+                        <ChipRow
+                            options={priorities.filter((p) => p !== "All")}
+                            value={fPriority}
+                            onChange={setFPriority}
+                        />
+
+                        <SectionTitle title="Status" compact />
+                        <ChipRow
+                            options={statuses.filter((s) => s !== "All")}
+                            value={fStatus}
+                            onChange={setFStatus}
+                        />
+
+                        <SectionTitle title="Notes" compact />
+                        <StyledInput
+                            value={fNotes}
+                            onChangeText={setFNotes}
+                            placeholder="Optional notes..."
+                        />
+
+                        <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
+                            <Pressable
+                                onPress={() => setModalOpen(false)}
+                                style={({ pressed }) => ({
+                                    flex: 1,
+                                    paddingVertical: 14,
+                                    borderRadius: theme.radius.md,
+                                    backgroundColor: "rgba(255,255,255,0.06)",
+                                    borderWidth: 1,
+                                    borderColor: theme.colors.border,
+                                    alignItems: "center",
+                                    transform: [{ scale: pressed ? 0.985 : 1 }],
+                                })}
+                            >
+                                <Text style={{ color: theme.colors.text, fontWeight: "800" }}>
+                                    Cancel
+                                </Text>
+                            </Pressable>
+
+                            <Pressable
+                                onPress={save}
+                                style={({ pressed }) => ({
+                                    flex: 1,
+                                    paddingVertical: 14,
+                                    borderRadius: theme.radius.md,
+                                    backgroundColor: theme.colors.accent,
+                                    alignItems: "center",
+                                    transform: [{ scale: pressed ? 0.985 : 1 }],
+                                })}
+                            >
+                                <Text style={{ color: "#fff", fontWeight: "900" }}>Save</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        </View>
+    );
+}
+
+function SectionTitle({ title, compact = false }) {
+    return (
+        <Text
+            style={{
+                color: theme.colors.text,
+                fontSize: compact ? 15 : 17,
+                fontWeight: "800",
+                marginBottom: 10,
+                marginTop: compact ? 14 : 0,
+            }}
+        >
+            {title}
+        </Text>
+    );
+}
+
+function StyledInput({ value, onChangeText, placeholder }) {
+    return (
+        <TextInput
+            value={value}
+            onChangeText={onChangeText}
+            placeholder={placeholder}
+            placeholderTextColor={theme.colors.muted}
+            style={{
+                backgroundColor: theme.colors.surface,
+                borderRadius: theme.radius.md,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+            }}
+        />
+    );
+}
+
+function ChipRow({ options, value, onChange }) {
+    return (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
             {options.map((opt) => {
                 const selected = opt === value;
@@ -70,187 +418,277 @@ export default function TasksScreen({ role }) {
                     <Pressable
                         key={opt}
                         onPress={() => onChange(opt)}
-                        style={{
-                            paddingVertical: 8,
-                            paddingHorizontal: 12,
-                            borderRadius: 999,
+                        style={({ pressed }) => ({
+                            paddingVertical: 9,
+                            paddingHorizontal: 14,
+                            borderRadius: theme.radius.pill,
                             borderWidth: 1,
-                            borderColor: selected ? "#111" : "rgba(0,0,0,0.15)",
-                            backgroundColor: selected ? "#111" : "rgba(255,255,255,0.65)",
-                        }}
+                            borderColor: selected
+                                ? "rgba(124,92,255,0.45)"
+                                : theme.colors.border,
+                            backgroundColor: selected
+                                ? "rgba(124,92,255,0.16)"
+                                : "rgba(255,255,255,0.04)",
+                            transform: [{ scale: pressed ? 0.98 : 1 }],
+                        })}
                     >
-                        <Text style={{ color: selected ? "#fff" : "#111", fontWeight: "700" }}>{opt}</Text>
+                        <Text
+                            style={{
+                                color: selected ? theme.colors.text : theme.colors.muted,
+                                fontWeight: "700",
+                            }}
+                        >
+                            {opt}
+                        </Text>
                     </Pressable>
                 );
             })}
         </View>
     );
+}
 
-    const openAdd = () => {
-        setEditing(null);
-        setFTitle("");
-        setFAssignee("");
-        setFStatus("open");
-        setFPriority("low");
-        setFNotes("");
-        setModalOpen(true);
-    };
-
-    const openEdit = (task) => {
-        setEditing(task);
-        setFTitle(task.title ?? "");
-        setFAssignee(task.assignee ?? "");
-        setFStatus(task.status ?? "open");
-        setFPriority(task.priority ?? "low");
-        setFNotes(task.notes ?? "");
-        setModalOpen(true);
-    };
-
-    const save = () => {
-        const cleaned = {
-            title: (fTitle.trim() || "untitled task").replace(/\s+/g, " "),
-            assignee: (fAssignee.trim() || "unassigned").replace(/\s+/g, " "),
-            status: fStatus,
-            priority: fPriority,
-            notes: fNotes.trim(),
-        };
-
-        if (editing) {
-            setItems((prev) => prev.map((x) => (x.id === editing.id ? { ...x, ...cleaned } : x)));
-        } else {
-            setItems((prev) => [{ id: makeId("t"), ...cleaned }, ...prev]);
-        }
-        setModalOpen(false);
-    };
-
-    const remove = (id) => setItems((prev) => prev.filter((x) => x.id !== id));
-
-    const cycleStatus = (id) => {
-        // staff-friendly: tap to cycle open -> in-progress -> done
-        const order = ["open", "in-progress", "done"];
-        setItems((prev) =>
-            prev.map((x) => {
-                if (x.id !== id) return x;
-                const idx = Math.max(0, order.indexOf(x.status));
-                return { ...x, status: order[Math.min(order.length - 1, idx + 1)] };
-            })
-        );
-    };
-
-    if (booting) return null;
+function SummaryCard({ label, value, accent }) {
+    const color =
+        accent === "danger"
+            ? theme.colors.danger
+            : accent === "success"
+                ? theme.colors.success
+                : theme.colors.accent;
 
     return (
-        <View style={{ flex: 1, padding: 16, gap: 12, backgroundColor: "#F6F7FF" }}>
-            <Text style={{ fontSize: 18, fontWeight: "900" }}>
-                Tasks {isManager ? "(Manager)" : "(Staff)"}
-            </Text>
-
-            <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search task, assignee, notes..."
+        <View
+            style={{
+                flex: 1,
+                backgroundColor: theme.colors.surface,
+                borderRadius: theme.radius.lg,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                padding: 14,
+            }}
+        >
+            <Text style={{ color: theme.colors.muted, fontSize: 12 }}>{label}</Text>
+            <Text
                 style={{
-                    borderWidth: 1,
-                    borderColor: "rgba(0,0,0,0.12)",
-                    borderRadius: 12,
-                    padding: 12,
-                    backgroundColor: "#fff",
+                    color,
+                    fontSize: 22,
+                    fontWeight: "900",
+                    marginTop: 4,
                 }}
-            />
+            >
+                {value}
+            </Text>
+        </View>
+    );
+}
 
-            <Text style={{ fontWeight: "800" }}>Status</Text>
-            <ChipRow options={statuses} value={status} onChange={setStatus} />
-
-            <Text style={{ fontWeight: "800" }}>Priority</Text>
-            <ChipRow options={priorities} value={priority} onChange={setPriority} />
-
-            {isManager ? (
-                <Pressable
-                    onPress={openAdd}
-                    style={{ padding: 14, borderRadius: 12, backgroundColor: "#111", alignItems: "center" }}
-                >
-                    <Text style={{ color: "#fff", fontWeight: "800" }}>+ Add Task</Text>
-                </Pressable>
-            ) : (
-                <Text style={{ opacity: 0.7 }}>
-                    Tip: tap a task to move it from open → in-progress → done.
-                </Text>
-            )}
-
-            <FlatList
-                data={filtered}
-                keyExtractor={(x) => x.id}
-                ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-                renderItem={({ item }) => (
-                    <Pressable
-                        onPress={() => (isManager ? openEdit(item) : cycleStatus(item.id))}
+function TaskCard({ item, isManager, onEdit, onDelete, onComplete }) {
+    return (
+        <View
+            style={{
+                backgroundColor: theme.colors.surface,
+                borderRadius: theme.radius.lg,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                padding: 16,
+            }}
+        >
+            <View
+                style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 12,
+                }}
+            >
+                <View style={{ flex: 1 }}>
+                    <Text
                         style={{
-                            backgroundColor: "#fff",
-                            borderRadius: 14,
-                            padding: 14,
-                            borderWidth: 1,
-                            borderColor: "rgba(0,0,0,0.06)",
+                            color: theme.colors.text,
+                            fontSize: 18,
+                            fontWeight: "900",
                         }}
                     >
-                        <Text style={{ fontWeight: "900" }}>{item.title}</Text>
-                        <Text style={{ marginTop: 6, opacity: 0.75 }}>
-                            {item.assignee} • {item.status} • {item.priority}
+                        {item.title}
+                    </Text>
+
+                    <Text
+                        style={{
+                            color: theme.colors.muted,
+                            marginTop: 6,
+                            lineHeight: 20,
+                        }}
+                    >
+                        Assigned to: {item.assignedTo}
+                    </Text>
+
+                    {!!item.notes && (
+                        <Text
+                            style={{
+                                color: theme.colors.muted,
+                                marginTop: 6,
+                                lineHeight: 20,
+                            }}
+                        >
+                            {item.notes}
                         </Text>
-                        {!!item.notes && <Text style={{ marginTop: 8, opacity: 0.75 }}>{item.notes}</Text>}
-
-                        {isManager ? (
-                            <View style={{ flexDirection: "row", gap: 10, marginTop: 12 }}>
-                                <Pressable
-                                    onPress={() => openEdit(item)}
-                                    style={{ flex: 1, padding: 12, borderRadius: 12, backgroundColor: "rgba(17,17,17,0.08)", alignItems: "center" }}
-                                >
-                                    <Text style={{ fontWeight: "800" }}>Edit</Text>
-                                </Pressable>
-
-                                <Pressable
-                                    onPress={() => remove(item.id)}
-                                    style={{ flex: 1, padding: 12, borderRadius: 12, backgroundColor: "rgba(220,0,0,0.10)", alignItems: "center" }}
-                                >
-                                    <Text style={{ fontWeight: "900", color: "crimson" }}>Delete</Text>
-                                </Pressable>
-                            </View>
-                        ) : null}
-                    </Pressable>
-                )}
-            />
-
-            {/* manager modal */}
-            <Modal visible={modalOpen} transparent animationType="slide" onRequestClose={() => setModalOpen(false)}>
-                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.35)", justifyContent: "flex-end" }}>
-                    <View style={{ backgroundColor: "#fff", padding: 16, borderTopLeftRadius: 18, borderTopRightRadius: 18, gap: 10 }}>
-                        <Text style={{ fontSize: 16, fontWeight: "900" }}>{editing ? "Edit Task" : "Add Task"}</Text>
-
-                        <Text style={{ fontWeight: "800" }}>Title</Text>
-                        <TextInput value={fTitle} onChangeText={setFTitle} placeholder="clean bar" style={{ borderWidth: 1, borderColor: "rgba(0,0,0,0.12)", borderRadius: 12, padding: 12 }} />
-
-                        <Text style={{ fontWeight: "800" }}>Assignee</Text>
-                        <TextInput value={fAssignee} onChangeText={setFAssignee} placeholder="Ava" style={{ borderWidth: 1, borderColor: "rgba(0,0,0,0.12)", borderRadius: 12, padding: 12 }} />
-
-                        <Text style={{ fontWeight: "800" }}>Status</Text>
-                        <ChipRow options={statuses.filter((x) => x !== "All")} value={fStatus} onChange={setFStatus} />
-
-                        <Text style={{ fontWeight: "800" }}>Priority</Text>
-                        <ChipRow options={priorities.filter((x) => x !== "All")} value={fPriority} onChange={setFPriority} />
-
-                        <Text style={{ fontWeight: "800" }}>Notes (optional)</Text>
-                        <TextInput value={fNotes} onChangeText={setFNotes} placeholder="extra details..." style={{ borderWidth: 1, borderColor: "rgba(0,0,0,0.12)", borderRadius: 12, padding: 12 }} />
-
-                        <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
-                            <Pressable onPress={() => setModalOpen(false)} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.08)", alignItems: "center" }}>
-                                <Text style={{ fontWeight: "900" }}>Cancel</Text>
-                            </Pressable>
-                            <Pressable onPress={save} style={{ flex: 1, padding: 14, borderRadius: 12, backgroundColor: "#111", alignItems: "center" }}>
-                                <Text style={{ color: "#fff", fontWeight: "900" }}>Save</Text>
-                            </Pressable>
-                        </View>
-                    </View>
+                    )}
                 </View>
-            </Modal>
+
+                <View style={{ alignItems: "flex-end", gap: 8 }}>
+                    <PriorityPill priority={item.priority} />
+                    <StatusPill status={item.status} />
+                </View>
+            </View>
+
+            {isManager ? (
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+                    <Pressable
+                        onPress={onEdit}
+                        style={({ pressed }) => ({
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: theme.radius.md,
+                            backgroundColor: "rgba(255,255,255,0.06)",
+                            borderWidth: 1,
+                            borderColor: theme.colors.border,
+                            alignItems: "center",
+                            transform: [{ scale: pressed ? 0.985 : 1 }],
+                        })}
+                    >
+                        <Text style={{ color: theme.colors.text, fontWeight: "800" }}>
+                            Edit
+                        </Text>
+                    </Pressable>
+
+                    <Pressable
+                        onPress={onDelete}
+                        style={({ pressed }) => ({
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: theme.radius.md,
+                            backgroundColor: "rgba(255,92,122,0.14)",
+                            borderWidth: 1,
+                            borderColor: "rgba(255,92,122,0.35)",
+                            alignItems: "center",
+                            transform: [{ scale: pressed ? 0.985 : 1 }],
+                        })}
+                    >
+                        <Text style={{ color: theme.colors.danger, fontWeight: "900" }}>
+                            Delete
+                        </Text>
+                    </Pressable>
+                </View>
+            ) : item.status !== "complete" ? (
+                <Pressable
+                    onPress={onComplete}
+                    style={({ pressed }) => ({
+                        marginTop: 14,
+                        backgroundColor: theme.colors.accent,
+                        borderRadius: theme.radius.md,
+                        paddingVertical: 13,
+                        alignItems: "center",
+                        transform: [{ scale: pressed ? 0.985 : 1 }],
+                    })}
+                >
+                    <Text style={{ color: "#fff", fontWeight: "900" }}>
+                        Mark Complete
+                    </Text>
+                </Pressable>
+            ) : (
+                <View
+                    style={{
+                        marginTop: 14,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                    }}
+                >
+                    <MaterialCommunityIcons
+                        name="check-circle-outline"
+                        size={20}
+                        color={theme.colors.success}
+                    />
+                    <Text style={{ color: theme.colors.success, fontWeight: "800" }}>
+                        Completed
+                    </Text>
+                </View>
+            )}
+        </View>
+    );
+}
+
+function PriorityPill({ priority }) {
+    const color =
+        priority === "high"
+            ? theme.colors.danger
+            : priority === "medium"
+                ? theme.colors.warning
+                : theme.colors.accent2;
+
+    const bg =
+        priority === "high"
+            ? "rgba(255,92,122,0.14)"
+            : priority === "medium"
+                ? "rgba(255,184,77,0.14)"
+                : "rgba(76,201,240,0.14)";
+
+    const border =
+        priority === "high"
+            ? "rgba(255,92,122,0.35)"
+            : priority === "medium"
+                ? "rgba(255,184,77,0.35)"
+                : "rgba(76,201,240,0.35)";
+
+    return (
+        <View
+            style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: theme.radius.pill,
+                backgroundColor: bg,
+                borderWidth: 1,
+                borderColor: border,
+            }}
+        >
+            <Text style={{ color, fontWeight: "800" }}>{priority}</Text>
+        </View>
+    );
+}
+
+function StatusPill({ status }) {
+    const color =
+        status === "complete"
+            ? theme.colors.success
+            : status === "in progress"
+                ? theme.colors.accent
+                : theme.colors.danger;
+
+    const bg =
+        status === "complete"
+            ? "rgba(61,220,151,0.14)"
+            : status === "in progress"
+                ? "rgba(124,92,255,0.14)"
+                : "rgba(255,92,122,0.14)";
+
+    const border =
+        status === "complete"
+            ? "rgba(61,220,151,0.35)"
+            : status === "in progress"
+                ? "rgba(124,92,255,0.35)"
+                : "rgba(255,92,122,0.35)";
+
+    return (
+        <View
+            style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: theme.radius.pill,
+                backgroundColor: bg,
+                borderWidth: 1,
+                borderColor: border,
+            }}
+        >
+            <Text style={{ color, fontWeight: "800" }}>{status}</Text>
         </View>
     );
 }
