@@ -14,9 +14,11 @@ export async function sendPingToUser({ toUserId, message }) {
         .eq("id", toUserId)
         .single();
 
-    if (targetError) throw targetError;
+    if (targetError) {
+        throw new Error(`Target user lookup failed: ${targetError.message}`);
+    }
 
-    const { data, error } = await supabase.from("pings").insert({
+    const payload = {
         from_user_id: currentUser.id,
         to_user_id: targetUser.id,
         from_user: currentUser.username,
@@ -24,9 +26,18 @@ export async function sendPingToUser({ toUserId, message }) {
         message,
         acknowledged: false,
         sent: false,
-    }).select().single();
+    };
 
-    if (error) throw error;
+    const { data, error } = await supabase
+        .from("pings")
+        .insert(payload)
+        .select()
+        .single();
+
+    if (error) {
+        throw new Error(`Ping insert failed: ${error.message}`);
+    }
+
     return data;
 }
 
@@ -51,33 +62,6 @@ export async function getInboxPings() {
       to_user_id
     `)
         .eq("to_user_id", currentUser.id)
-        .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data || [];
-}
-
-export async function getSentPings() {
-    const currentUser = await getCurrentUserProfile();
-
-    if (!currentUser) {
-        throw new Error("No logged in user found.");
-    }
-
-    const { data, error } = await supabase
-        .from("pings")
-        .select(`
-      id,
-      message,
-      acknowledged,
-      sent,
-      created_at,
-      from_user,
-      to_user,
-      from_user_id,
-      to_user_id
-    `)
-        .eq("from_user_id", currentUser.id)
         .order("created_at", { ascending: false });
 
     if (error) throw error;

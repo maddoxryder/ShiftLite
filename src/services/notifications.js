@@ -54,14 +54,3 @@ export async function registerForNotificationsAsync() {
         return { expoPushToken: null };
     }
 }
-
-export async function sendLocalPingNotification(title, body, data = {}) {
-    await Notifications.scheduleNotificationAsync({
-        content: {
-            title,
-            body,
-            data,
-        },
-        trigger: null,
-    });
-}
