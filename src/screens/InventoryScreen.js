@@ -12,6 +12,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { getItem, setItem } from "../services/storage";
 import { invCategories, seed } from "../data/seed";
 import { theme } from "../theme/theme";
+import { loadAppSettings } from "../services/appSettings";
 
 const STORAGE_KEY = "inventoryData";
 
@@ -24,6 +25,7 @@ export default function InventoryScreen({ role }) {
 
     const [items, setItems] = useState([]);
     const [booting, setBooting] = useState(true);
+    const [appSettings, setAppSettings] = useState(null);
 
     const [category, setCategory] = useState("All");
     const [lowOnly, setLowOnly] = useState(false);
@@ -40,8 +42,11 @@ export default function InventoryScreen({ role }) {
 
     useEffect(() => {
         (async () => {
+            const loadedSettings = await loadAppSettings();
+            setAppSettings(loadedSettings);
+
             const saved = await getItem(STORAGE_KEY, null);
-            setItems(saved ?? seed.inventory);
+            setItems(saved ?? seed?.inventory ?? []);
             setBooting(false);
         })();
     }, []);
@@ -54,7 +59,7 @@ export default function InventoryScreen({ role }) {
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
 
-        return items.filter((item) => {
+        return (items ?? []).filter((item) => {
             const matchCategory = category === "All" ? true : item.category === category;
             const matchLow = lowOnly ? Number(item.qty) <= Number(item.min) : true;
             const matchSearch =
@@ -68,8 +73,9 @@ export default function InventoryScreen({ role }) {
     }, [items, category, lowOnly, search]);
 
     const summary = useMemo(() => {
-        const total = items.length;
-        const low = items.filter((x) => Number(x.qty) <= Number(x.min)).length;
+        const safeItems = items ?? [];
+        const total = safeItems.length;
+        const low = safeItems.filter((x) => Number(x.qty) <= Number(x.min)).length;
         const healthy = total - low;
         return { total, low, healthy };
     }, [items]);
@@ -130,6 +136,8 @@ export default function InventoryScreen({ role }) {
 
     if (booting) return null;
 
+    const showLowStockVisuals = appSettings?.lowStockAlerts !== false;
+
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
             <ScrollView
@@ -159,14 +167,20 @@ export default function InventoryScreen({ role }) {
                         : "View stock levels and low-stock alerts."}
                 </Text>
 
-                {/* Summary */}
                 <View style={{ flexDirection: "row", gap: 12, marginBottom: 18 }}>
                     <SummaryCard label="Items" value={summary.total} />
-                    <SummaryCard label="Low" value={summary.low} accent="danger" />
-                    <SummaryCard label="Healthy" value={summary.healthy} accent="success" />
+                    <SummaryCard
+                        label="Low"
+                        value={summary.low}
+                        accent={showLowStockVisuals ? "danger" : undefined}
+                    />
+                    <SummaryCard
+                        label="Healthy"
+                        value={summary.healthy}
+                        accent="success"
+                    />
                 </View>
 
-                {/* Search */}
                 <View
                     style={{
                         backgroundColor: theme.colors.surface,
@@ -253,6 +267,7 @@ export default function InventoryScreen({ role }) {
                             onDelete={() => remove(item.id)}
                             onMinus={() => adjustQty(item.id, -1)}
                             onPlus={() => adjustQty(item.id, 1)}
+                            showLowStockVisuals={showLowStockVisuals}
                         />
                     ))}
 
@@ -275,7 +290,6 @@ export default function InventoryScreen({ role }) {
                 </View>
             </ScrollView>
 
-            {/* Modal */}
             <Modal
                 visible={modalOpen}
                 transparent
@@ -512,6 +526,7 @@ function InventoryCard({
                            onDelete,
                            onMinus,
                            onPlus,
+                           showLowStockVisuals,
                        }) {
     const low = Number(item.qty) <= Number(item.min);
     const percent =
@@ -525,7 +540,10 @@ function InventoryCard({
                 backgroundColor: theme.colors.surface,
                 borderRadius: theme.radius.lg,
                 borderWidth: 1,
-                borderColor: low ? "rgba(255,92,122,0.25)" : theme.colors.border,
+                borderColor:
+                    low && showLowStockVisuals
+                        ? "rgba(255,92,122,0.25)"
+                        : theme.colors.border,
                 padding: 16,
             }}
         >
@@ -563,22 +581,27 @@ function InventoryCard({
                         paddingHorizontal: 10,
                         paddingVertical: 6,
                         borderRadius: theme.radius.pill,
-                        backgroundColor: low
-                            ? "rgba(255,92,122,0.14)"
-                            : "rgba(61,220,151,0.14)",
+                        backgroundColor:
+                            low && showLowStockVisuals
+                                ? "rgba(255,92,122,0.14)"
+                                : "rgba(61,220,151,0.14)",
                         borderWidth: 1,
-                        borderColor: low
-                            ? "rgba(255,92,122,0.35)"
-                            : "rgba(61,220,151,0.35)",
+                        borderColor:
+                            low && showLowStockVisuals
+                                ? "rgba(255,92,122,0.35)"
+                                : "rgba(61,220,151,0.35)",
                     }}
                 >
                     <Text
                         style={{
-                            color: low ? theme.colors.danger : theme.colors.success,
+                            color:
+                                low && showLowStockVisuals
+                                    ? theme.colors.danger
+                                    : theme.colors.success,
                             fontWeight: "800",
                         }}
                     >
-                        {low ? "LOW" : "OK"}
+                        {low && showLowStockVisuals ? "LOW" : "OK"}
                     </Text>
                 </View>
             </View>
@@ -611,7 +634,10 @@ function InventoryCard({
                         style={{
                             width: `${Math.max(8, percent * 100)}%`,
                             height: "100%",
-                            backgroundColor: low ? theme.colors.danger : theme.colors.accent,
+                            backgroundColor:
+                                low && showLowStockVisuals
+                                    ? theme.colors.danger
+                                    : theme.colors.accent,
                             borderRadius: 999,
                         }}
                     />

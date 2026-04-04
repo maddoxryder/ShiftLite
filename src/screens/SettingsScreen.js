@@ -1,12 +1,39 @@
-import React, { useState } from "react";
-import { View, Text, Switch, Pressable, Alert, ScrollView } from "react-native";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import React, { useEffect, useMemo, useState } from "react";
+import { View, Text, Switch, Pressable, ScrollView, Alert } from "react-native";
+import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { theme } from "../theme/theme";
+import { loadAppSettings, saveAppSettings } from "../services/appSettings";
 
-export default function SettingsScreen({ onLogout, role }) {
-    const [pushEnabled, setPushEnabled] = useState(true);
-    const [soundEnabled, setSoundEnabled] = useState(true);
-    const [darkMode, setDarkMode] = useState(true);
+export default function SettingsScreen({ onLogout, role, user }) {
+    const [settings, setSettings] = useState(null);
+
+    useEffect(() => {
+        (async () => {
+            const loaded = await loadAppSettings();
+            setSettings(loaded);
+        })();
+    }, []);
+
+    const updateSetting = async (key, value) => {
+        const next = { ...(settings || {}), [key]: value };
+        setSettings(next);
+        await saveAppSettings(next);
+    };
+
+    const initials = useMemo(() => {
+        const source =
+            user?.display_name ||
+            user?.username ||
+            (role === "manager" ? "Manager" : "Staff");
+        return source
+            .split(" ")
+            .map((x) => x[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase();
+    }, [user, role]);
+
+    if (!settings) return null;
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -32,10 +59,9 @@ export default function SettingsScreen({ onLogout, role }) {
                         marginBottom: 18,
                     }}
                 >
-                    Manage notifications, appearance, and account preferences.
+                    Manage preferences, alerts, appearance, and account tools.
                 </Text>
 
-                {/* Profile Summary */}
                 <View
                     style={{
                         backgroundColor: theme.colors.surface,
@@ -51,8 +77,8 @@ export default function SettingsScreen({ onLogout, role }) {
                 >
                     <View
                         style={{
-                            width: 54,
-                            height: 54,
+                            width: 56,
+                            height: 56,
                             borderRadius: 18,
                             backgroundColor: "rgba(124,92,255,0.16)",
                             borderWidth: 1,
@@ -68,7 +94,7 @@ export default function SettingsScreen({ onLogout, role }) {
                                 fontWeight: "900",
                             }}
                         >
-                            {role === "manager" ? "M" : "S"}
+                            {initials}
                         </Text>
                     </View>
 
@@ -80,7 +106,7 @@ export default function SettingsScreen({ onLogout, role }) {
                                 fontWeight: "900",
                             }}
                         >
-                            {role === "manager" ? "Manager Account" : "Staff Account"}
+                            {user?.display_name || user?.username || "ShiftLite User"}
                         </Text>
                         <Text
                             style={{
@@ -88,7 +114,7 @@ export default function SettingsScreen({ onLogout, role }) {
                                 marginTop: 4,
                             }}
                         >
-                            Role-based access enabled
+                            {role === "manager" ? "Manager" : "Staff"} account
                         </Text>
                     </View>
                 </View>
@@ -98,16 +124,37 @@ export default function SettingsScreen({ onLogout, role }) {
                     <SettingRow
                         icon={<Ionicons name="notifications-outline" size={20} color={theme.colors.text} />}
                         title="Push notifications"
-                        subtitle="Receive pings, announcements, and alerts"
-                        value={pushEnabled}
-                        onValueChange={setPushEnabled}
+                        subtitle="Enable incoming pings and operational alerts"
+                        value={settings.pushEnabled}
+                        onValueChange={(value) => updateSetting("pushEnabled", value)}
                     />
                     <SettingRow
                         icon={<Ionicons name="volume-high-outline" size={20} color={theme.colors.text} />}
                         title="Sound"
-                        subtitle="Play sound for incoming pings and updates"
-                        value={soundEnabled}
-                        onValueChange={setSoundEnabled}
+                        subtitle="Play a sound when a ping or alert arrives"
+                        value={settings.soundEnabled}
+                        onValueChange={(value) => updateSetting("soundEnabled", value)}
+                    />
+                    <SettingRow
+                        icon={<MaterialCommunityIcons name="archive-alert-outline" size={20} color={theme.colors.text} />}
+                        title="Low stock alerts"
+                        subtitle="Show alerts for inventory items below threshold"
+                        value={settings.lowStockAlerts}
+                        onValueChange={(value) => updateSetting("lowStockAlerts", value)}
+                    />
+                    <SettingRow
+                        icon={<Ionicons name="calendar-outline" size={20} color={theme.colors.text} />}
+                        title="Shift reminders"
+                        subtitle="Enable schedule and shift update reminders"
+                        value={settings.shiftReminders}
+                        onValueChange={(value) => updateSetting("shiftReminders", value)}
+                    />
+                    <SettingRow
+                        icon={<Ionicons name="megaphone-outline" size={20} color={theme.colors.text} />}
+                        title="Announcements"
+                        subtitle="Enable announcement notifications"
+                        value={settings.announcementsEnabled}
+                        onValueChange={(value) => updateSetting("announcementsEnabled", value)}
                     />
                 </View>
 
@@ -116,38 +163,59 @@ export default function SettingsScreen({ onLogout, role }) {
                     <SettingRow
                         icon={<Ionicons name="moon-outline" size={20} color={theme.colors.text} />}
                         title="Dark mode"
-                        subtitle="Premium dark theme enabled"
-                        value={darkMode}
-                        onValueChange={setDarkMode}
+                        subtitle="Current app theme preference"
+                        value={settings.darkMode}
+                        onValueChange={(value) => updateSetting("darkMode", value)}
+                    />
+                    <SettingRow
+                        icon={<Feather name="minimize-2" size={20} color={theme.colors.text} />}
+                        title="Compact mode"
+                        subtitle="Use denser cards and list layouts"
+                        value={settings.compactMode}
+                        onValueChange={(value) => updateSetting("compactMode", value)}
                     />
                 </View>
 
-                <SectionTitle title="Account" />
+                <SectionTitle title="Inbox behavior" />
+                <View style={{ gap: 12, marginBottom: 18 }}>
+                    <SettingRow
+                        icon={<MaterialCommunityIcons name="email-check-outline" size={20} color={theme.colors.text} />}
+                        title="Auto-mark announcements"
+                        subtitle="Automatically mark announcements as read after opening"
+                        value={settings.autoMarkAnnouncementsRead}
+                        onValueChange={(value) => updateSetting("autoMarkAnnouncementsRead", value)}
+                    />
+                </View>
+
+                <SectionTitle title="Tools" />
                 <View style={{ gap: 12, marginBottom: 18 }}>
                     <ActionCard
-                        icon={
-                            <MaterialCommunityIcons
-                                name="account-edit-outline"
-                                size={20}
-                                color={theme.colors.text}
-                            />
-                        }
+                        icon={<MaterialCommunityIcons name="account-edit-outline" size={20} color={theme.colors.text} />}
                         title="Edit Profile"
-                        subtitle="Update name, contact, and staff details"
-                        onPress={() => Alert.alert("Profile", "Profile editing coming next.")}
+                        subtitle="Profile editing screen can be added next"
+                        onPress={() => Alert.alert("Edit Profile", "Profile editing can be added as the next screen.")}
                     />
-
                     <ActionCard
-                        icon={
-                            <Ionicons
-                                name="shield-checkmark-outline"
-                                size={20}
-                                color={theme.colors.text}
-                            />
+                        icon={<Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.text} />}
+                        title="Privacy & Permissions"
+                        subtitle="Review permissions and notification access"
+                        onPress={() =>
+                            Alert.alert(
+                                "Privacy & Permissions",
+                                "You can manage system-level notification permissions from your device settings."
+                            )
                         }
-                        title="Privacy"
-                        subtitle="Review permissions and app access"
-                        onPress={() => Alert.alert("Privacy", "Privacy options coming next.")}
+                    />
+                    <ActionCard
+                        icon={<Ionicons name="information-circle-outline" size={20} color={theme.colors.text} />}
+                        title="About ShiftLite"
+                        subtitle="Version 1.0.0 • Club operations platform"
+                        onPress={() =>
+                            Alert.alert(
+                                "About ShiftLite",
+                                "ShiftLite helps staff manage schedules, inventory, tasks, pings, and announcements."
+                            )
+                        }
                     />
                 </View>
 

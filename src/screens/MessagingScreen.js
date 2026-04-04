@@ -12,6 +12,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { getItem, setItem } from "../services/storage";
 import { seed } from "../data/seed";
 import { theme } from "../theme/theme";
+import { loadAppSettings } from "../services/appSettings";
 
 const STORAGE_KEY = "announcementsData";
 const channels = ["All", "general", "floor", "bar", "security", "management"];
@@ -25,6 +26,7 @@ export default function MessagingScreen({ role }) {
 
     const [items, setItems] = useState([]);
     const [booting, setBooting] = useState(true);
+    const [appSettings, setAppSettings] = useState(null);
 
     const [search, setSearch] = useState("");
     const [channel, setChannel] = useState("All");
@@ -39,8 +41,11 @@ export default function MessagingScreen({ role }) {
 
     useEffect(() => {
         (async () => {
+            const loadedSettings = await loadAppSettings();
+            setAppSettings(loadedSettings);
+
             const saved = await getItem(STORAGE_KEY, null);
-            setItems(saved ?? seed.announcements ?? []);
+            setItems(saved ?? seed?.announcements ?? []);
             setBooting(false);
         })();
     }, []);
@@ -248,6 +253,7 @@ export default function MessagingScreen({ role }) {
                             onEdit={() => openEdit(item)}
                             onDelete={() => remove(item.id)}
                             onToggleRead={() => toggleRead(item.id)}
+                            autoMarkAnnouncementsRead={appSettings?.autoMarkAnnouncementsRead}
                         />
                     ))}
 
