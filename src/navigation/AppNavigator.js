@@ -11,6 +11,7 @@ import ScheduleScreen from "../screens/ScheduleScreen";
 import TasksScreen from "../screens/TasksScreen";
 import InventoryScreen from "../screens/InventoryScreen";
 import MessagingScreen from "../screens/MessagingScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 
 import {
   getCurrentSession,
@@ -199,6 +200,7 @@ export default function AppNavigator() {
                   name="Messaging"
                   options={{ title: "Announcements" }}
               >
+                
                 {(props) => (
                     <MessagingScreen
                         {...props}
@@ -206,6 +208,19 @@ export default function AppNavigator() {
                         user={profile}
                     />
                 )}
+              </Stack.Screen>
+
+              <Stack.Screen
+                  name="Profile"
+                  options={{ title: "Profile" }}
+              >
+                  {(props) => (
+                      <ProfileScreen
+                          {...props}
+                          role={profile.role}
+                          user={profile}
+                      />
+                  )}
               </Stack.Screen>
             </>
         )}

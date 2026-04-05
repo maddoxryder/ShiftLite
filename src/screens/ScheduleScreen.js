@@ -1,3 +1,4 @@
+import { supabase } from "../services/supabase";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     View,
@@ -9,11 +10,9 @@ import {
     ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { getItem, setItem } from "../services/storage";
-import { days, roles, seed } from "../data/seed";
+import { days, roles } from "../data/seed";
 import { theme } from "../theme/theme";
 
-const STORAGE_KEY = "scheduleData";
 
 function makeId(prefix = "s") {
     return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
@@ -41,16 +40,19 @@ export default function ScheduleScreen({ role }) {
 
     useEffect(() => {
         (async () => {
-            const saved = await getItem(STORAGE_KEY, null);
-            setItems(saved ?? seed.schedule);
+            const { data, error } = await supabase
+                .from("schedules")
+                .select("*");
+
+                if (error) {
+                console.log("Fetch schedules error:", error);
+                } else {
+                setItems(data || []);
+                }
             setBooting(false);
         })();
     }, []);
 
-    useEffect(() => {
-        if (booting) return;
-        setItem(STORAGE_KEY, items);
-    }, [items, booting]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -91,28 +93,38 @@ export default function ScheduleScreen({ role }) {
         setModalOpen(true);
     };
 
-    const save = () => {
-        const cleaned = {
-            day: fDay,
-            start: fStart,
-            end: fEnd,
-            person: fPerson.trim() || "Unassigned",
-            role: fRole,
-            notes: fNotes,
-        };
-
-        if (editing) {
-            setItems((prev) =>
-                prev.map((x) => (x.id === editing.id ? { ...x, ...cleaned } : x))
-            );
-        } else {
-            setItems((prev) => [{ id: makeId("s"), ...cleaned }, ...prev]);
-        }
-        setModalOpen(false);
+    const save = async () => {
+    const cleaned = {
+        day: fDay,
+        start_time: fStart,
+        end_time: fEnd,
+        person: fPerson.trim() || "Unassigned",
+        role: fRole,
+        notes: fNotes,
     };
 
-    const remove = (id) => {
-        setItems((prev) => prev.filter((x) => x.id !== id));
+    if (editing) {
+        await supabase
+        .from("schedules")
+        .update(cleaned)
+        .eq("id", editing.id);
+    } else {
+        await supabase
+        .from("schedules")
+        .insert([cleaned]);
+    }
+
+    const { data } = await supabase.from("schedules").select("*");
+    setItems(data || []);
+
+    setModalOpen(false);
+    };
+
+    const remove = async (id) => {
+        await supabase.from("schedules").delete().eq("id", id);
+
+        const { data } = await supabase.from("schedules").select("*");
+        setItems(data || []);
     };
 
     if (booting) return null;
@@ -464,7 +476,7 @@ function ShiftCard({ item, isManager, onEdit, onDelete }) {
                             marginTop: 4,
                         }}
                     >
-                        {item.day} • {item.start} – {item.end}
+                        {item.day} • {item.start_time} – {item.end_time}
                     </Text>
                 </View>
 

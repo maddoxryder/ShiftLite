@@ -1,3 +1,4 @@
+import { supabase } from "../services/supabase";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     View,
@@ -8,10 +9,8 @@ import {
     ScrollView,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { getItem, setItem } from "../services/storage";
 import { theme } from "../theme/theme";
 
-const STORAGE_KEY = "ordersData";
 
 const seedOrders = [
     {
@@ -76,16 +75,19 @@ export default function OrdersScreen({ role }) {
 
     useEffect(() => {
         (async () => {
-            const saved = await getItem(STORAGE_KEY, null);
-            setItems(saved ?? seedOrders);
+            const { data, error } = await supabase
+                .from("orders")
+                .select("*");
+
+                if (error) {
+                console.log("Fetch orders error:", error);
+                } else {
+                setItems(data || []);
+                }
             setBooting(false);
         })();
     }, []);
 
-    useEffect(() => {
-        if (booting) return;
-        setItem(STORAGE_KEY, items);
-    }, [items, booting]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -137,7 +139,7 @@ export default function OrdersScreen({ role }) {
         setModalOpen(true);
     };
 
-    const save = () => {
+    const save = async () => {
         const cleaned = {
             item: fItem.trim() || "New Order",
             quantity: Number(fQuantity) || 1,
@@ -149,35 +151,47 @@ export default function OrdersScreen({ role }) {
         };
 
         if (editing) {
-            setItems((prev) =>
-                prev.map((x) => (x.id === editing.id ? { ...x, ...cleaned } : x))
-            );
+            await supabase
+            .from("orders")
+            .update(cleaned)
+            .eq("id", editing.id);
         } else {
-            setItems((prev) => [{ id: makeId("o"), ...cleaned }, ...prev]);
+            await supabase
+            .from("orders")
+            .insert([cleaned]);
         }
+
+        const { data } = await supabase.from("orders").select("*");
+        setItems(data || []);
 
         setModalOpen(false);
     };
 
-    const remove = (id) => {
-        setItems((prev) => prev.filter((x) => x.id !== id));
+    const remove = async (id) => {
+        await supabase.from("orders").delete().eq("id", id);
+
+        const { data } = await supabase.from("orders").select("*");
+        setItems(data || []);
     };
 
-    const cycleStatus = (id) => {
-        setItems((prev) =>
-            prev.map((x) => {
-                if (x.id !== id) return x;
+    const cycleStatus = async (id) => {
+        const item = items.find((x) => x.id === id);
+        if (!item) return;
 
-                const next =
-                    x.status === "pending"
-                        ? "approved"
-                        : x.status === "approved"
-                            ? "delivered"
-                            : "delivered";
+        const next =
+            item.status === "pending"
+            ? "approved"
+            : item.status === "approved"
+            ? "delivered"
+            : "delivered";
 
-                return { ...x, status: next };
-            })
-        );
+        await supabase
+            .from("orders")
+            .update({ status: next })
+            .eq("id", id);
+
+        const { data } = await supabase.from("orders").select("*");
+        setItems(data || []);
     };
 
     if (booting) return null;

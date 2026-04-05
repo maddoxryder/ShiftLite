@@ -1,3 +1,4 @@
+import { supabase } from "../services/supabase";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     View,
@@ -9,12 +10,10 @@ import {
     Switch,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { getItem, setItem } from "../services/storage";
-import { invCategories, seed } from "../data/seed";
+import { invCategories } from "../data/seed";
 import { theme } from "../theme/theme";
 import { loadAppSettings } from "../services/appSettings";
 
-const STORAGE_KEY = "inventoryData";
 
 function makeId(prefix = "i") {
     return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
@@ -41,20 +40,24 @@ export default function InventoryScreen({ role }) {
     const [fUnit, setFUnit] = useState("units");
 
     useEffect(() => {
-        (async () => {
-            const loadedSettings = await loadAppSettings();
-            setAppSettings(loadedSettings);
+    (async () => {
+        const loadedSettings = await loadAppSettings();
+        setAppSettings(loadedSettings);
 
-            const saved = await getItem(STORAGE_KEY, null);
-            setItems(saved ?? seed?.inventory ?? []);
-            setBooting(false);
-        })();
+        const { data, error } = await supabase
+            .from("inventory")
+            .select("*");
+
+        if (error) {
+            console.log("Fetch error:", error);
+        } else {
+            setItems(data || []);
+        }
+
+        setBooting(false);
+    })();
     }, []);
 
-    useEffect(() => {
-        if (booting) return;
-        setItem(STORAGE_KEY, items);
-    }, [items, booting]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -100,39 +103,54 @@ export default function InventoryScreen({ role }) {
         setModalOpen(true);
     };
 
-    const save = () => {
-        const cleaned = {
-            name: fName.trim() || "New Item",
-            category: fCategory,
-            qty: Number(fQty) || 0,
-            min: Number(fMin) || 0,
-            unit: fUnit.trim() || "units",
-        };
-
-        if (editing) {
-            setItems((prev) =>
-                prev.map((x) => (x.id === editing.id ? { ...x, ...cleaned } : x))
-            );
-        } else {
-            setItems((prev) => [{ id: makeId("i"), ...cleaned }, ...prev]);
-        }
-
-        setModalOpen(false);
+    const save = async () => {
+    const cleaned = {
+        name: fName.trim() || "New Item",
+        category: fCategory,
+        qty: Number(fQty) || 0,
+        min: Number(fMin) || 0,
+        unit: fUnit.trim() || "units",
     };
 
-    const remove = (id) => {
-        setItems((prev) => prev.filter((x) => x.id !== id));
+    if (editing) {
+        await supabase
+            .from("inventory")
+            .update(cleaned)
+            .eq("id", editing.id);
+    } else {
+        await supabase
+            .from("inventory")
+            .insert([cleaned]);
+    }
+
+    // reload data
+    const { data } = await supabase.from("inventory").select("*");
+    setItems(data || []);
+
+    setModalOpen(false);
     };
 
-    const adjustQty = (id, delta) => {
-        setItems((prev) =>
-            prev.map((x) =>
-                x.id === id
-                    ? { ...x, qty: Math.max(0, Number(x.qty) + delta) }
-                    : x
-            )
-        );
+    const remove = async (id) => {
+    await supabase.from("inventory").delete().eq("id", id);
+
+    const { data } = await supabase.from("inventory").select("*");
+    setItems(data || []);
     };
+
+    const adjustQty = async (id, delta) => {
+    const item = items.find((x) => x.id === id);
+    if (!item) return;
+
+    const newQty = Math.max(0, Number(item.qty) + delta);
+
+    await supabase
+        .from("inventory")
+        .update({ qty: newQty })
+        .eq("id", id);
+
+    const { data } = await supabase.from("inventory").select("*");
+    setItems(data || []);
+};
 
     if (booting) return null;
 

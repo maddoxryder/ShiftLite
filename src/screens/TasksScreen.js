@@ -1,3 +1,4 @@
+import { supabase } from "../services/supabase";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     View,
@@ -8,11 +9,9 @@ import {
     ScrollView,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { getItem, setItem } from "../services/storage";
-import { roles, seed } from "../data/seed";
+import { roles } from "../data/seed";
 import { theme } from "../theme/theme";
 
-const STORAGE_KEY = "tasksData";
 const priorities = ["All", "low", "medium", "high"];
 const statuses = ["All", "open", "in progress", "complete"];
 
@@ -42,28 +41,32 @@ export default function TasksScreen({ role }) {
 
     useEffect(() => {
         (async () => {
-            const saved = await getItem(STORAGE_KEY, null);
-            setItems(saved ?? seed.tasks);
+            const { data, error } = await supabase
+                .from("tasks")
+                .select("*");
+
+                if (error) {
+                console.log("Fetch tasks error:", error);
+                } else {
+                setItems(data || []);
+                }
+            
             setBooting(false);
         })();
     }, []);
 
-    useEffect(() => {
-        if (booting) return;
-        setItem(STORAGE_KEY, items);
-    }, [items, booting]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
 
         return items.filter((item) => {
-            const matchRole = jobRole === "All" ? true : item.assignedTo === jobRole;
+            const matchRole = jobRole === "All" ? true : item.assignedto === jobRole;
             const matchPriority = priority === "All" ? true : item.priority === priority;
             const matchStatus = status === "All" ? true : item.status === status;
             const matchSearch =
                 !q ||
                 (item.title ?? "").toLowerCase().includes(q) ||
-                (item.assignedTo ?? "").toLowerCase().includes(q) ||
+                (item.assignedto ?? "").toLowerCase().includes(q) ||
                 (item.priority ?? "").toLowerCase().includes(q) ||
                 (item.status ?? "").toLowerCase().includes(q) ||
                 (item.notes ?? "").toLowerCase().includes(q);
@@ -93,43 +96,54 @@ export default function TasksScreen({ role }) {
     const openEdit = (item) => {
         setEditing(item);
         setFTitle(item.title ?? "");
-        setFAssignedTo(item.assignedTo ?? "server");
+        setFAssignedTo(item.assignedto ?? "server");
         setFPriority(item.priority ?? "medium");
         setFStatus(item.status ?? "open");
         setFNotes(item.notes ?? "");
         setModalOpen(true);
     };
 
-    const save = () => {
+    const save = async () => {
         const cleaned = {
             title: fTitle.trim() || "New Task",
-            assignedTo: fAssignedTo,
+            assignedto: fAssignedTo,
             priority: fPriority,
             status: fStatus,
             notes: fNotes,
         };
 
         if (editing) {
-            setItems((prev) =>
-                prev.map((x) => (x.id === editing.id ? { ...x, ...cleaned } : x))
-            );
+            await supabase
+            .from("tasks")
+            .update(cleaned)
+            .eq("id", editing.id);
         } else {
-            setItems((prev) => [{ id: makeId("t"), ...cleaned }, ...prev]);
+            await supabase
+            .from("tasks")
+            .insert([cleaned]);
         }
 
+        const { data } = await supabase.from("tasks").select("*");
+        setItems(data || []);
+
         setModalOpen(false);
+        };
+
+    const remove = async (id) => {
+        await supabase.from("tasks").delete().eq("id", id);
+
+        const { data } = await supabase.from("tasks").select("*");
+        setItems(data || []);
     };
 
-    const remove = (id) => {
-        setItems((prev) => prev.filter((x) => x.id !== id));
-    };
+    const markComplete = async (id) => {
+        await supabase
+            .from("tasks")
+            .update({ status: "complete" })
+            .eq("id", id);
 
-    const markComplete = (id) => {
-        setItems((prev) =>
-            prev.map((x) =>
-                x.id === id ? { ...x, status: "complete" } : x
-            )
-        );
+        const { data } = await supabase.from("tasks").select("*");
+        setItems(data || []);
     };
 
     if (booting) return null;
@@ -518,7 +532,7 @@ function TaskCard({ item, isManager, onEdit, onDelete, onComplete }) {
                             lineHeight: 20,
                         }}
                     >
-                        Assigned to: {item.assignedTo}
+                        Assigned to: {item.assignedto}
                     </Text>
 
                     {!!item.notes && (

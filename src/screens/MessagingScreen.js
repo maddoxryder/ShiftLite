@@ -1,3 +1,4 @@
+import { supabase } from "../services/supabase";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     View,
@@ -9,12 +10,9 @@ import {
     Switch,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { getItem, setItem } from "../services/storage";
-import { seed } from "../data/seed";
 import { theme } from "../theme/theme";
 import { loadAppSettings } from "../services/appSettings";
 
-const STORAGE_KEY = "announcementsData";
 const channels = ["All", "general", "floor", "bar", "security", "management"];
 
 function makeId(prefix = "a") {
@@ -44,16 +42,20 @@ export default function MessagingScreen({ role }) {
             const loadedSettings = await loadAppSettings();
             setAppSettings(loadedSettings);
 
-            const saved = await getItem(STORAGE_KEY, null);
-            setItems(saved ?? seed?.announcements ?? []);
+            const { data, error } = await supabase
+                .from("announcements")
+                .select("*")
+                .order("created_at", { ascending: false });
+
+                if (error) {
+                console.log("Fetch announcements error:", error);
+                } else {
+                setItems(data || []);
+                }
             setBooting(false);
         })();
     }, []);
 
-    useEffect(() => {
-        if (booting) return;
-        setItem(STORAGE_KEY, items);
-    }, [items, booting]);
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -95,38 +97,61 @@ export default function MessagingScreen({ role }) {
         setModalOpen(true);
     };
 
-    const save = () => {
-        const cleaned = {
-            title: fTitle.trim() || "Untitled Announcement",
-            body: fBody.trim() || "",
-            channel: fChannel,
-            read: false,
-            created_at: new Date().toISOString(),
-        };
-
-        if (editing) {
-            setItems((prev) =>
-                prev.map((x) =>
-                    x.id === editing.id
-                        ? { ...x, ...cleaned, read: x.read }
-                        : x
-                )
-            );
-        } else {
-            setItems((prev) => [{ id: makeId("a"), ...cleaned }, ...prev]);
-        }
-
-        setModalOpen(false);
+    const save = async () => {
+    const cleaned = {
+        title: fTitle.trim() || "Untitled Announcement",
+        body: fBody.trim() || "",
+        channel: fChannel,
+        read: false,
+        created_at: new Date().toISOString(),
     };
 
-    const remove = (id) => {
-        setItems((prev) => prev.filter((x) => x.id !== id));
+    if (editing) {
+        await supabase
+        .from("announcements")
+        .update(cleaned)
+        .eq("id", editing.id);
+    } else {
+        await supabase
+        .from("announcements")
+        .insert([cleaned]);
+    }
+
+    const { data } = await supabase
+        .from("announcements")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    setItems(data || []);
+    setModalOpen(false);
     };
 
-    const toggleRead = (id) => {
-        setItems((prev) =>
-            prev.map((x) => (x.id === id ? { ...x, read: !x.read } : x))
-        );
+    const remove = async (id) => {
+    await supabase.from("announcements").delete().eq("id", id);
+
+    const { data } = await supabase
+        .from("announcements")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    setItems(data || []);
+    };
+
+    const toggleRead = async (id) => {
+    const item = items.find((x) => x.id === id);
+    if (!item) return;
+
+    await supabase
+        .from("announcements")
+        .update({ read: !item.read })
+        .eq("id", id);
+
+    const { data } = await supabase
+        .from("announcements")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    setItems(data || []);
     };
 
     if (booting) return null;

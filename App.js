@@ -5,6 +5,7 @@ import { registerForNotificationsAsync } from "./src/services/notifications";
 import { supabase } from "./src/services/supabase";
 import { getCurrentUserProfile } from "./src/services/auth";
 
+
 export default function App() {
     useEffect(() => {
         const setupNotifications = async () => {

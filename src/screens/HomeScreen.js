@@ -6,6 +6,7 @@ import PremiumTile from "../components/PremiumTile";
 import { theme } from "../theme/theme";
 import { supabase } from "../services/supabase";
 
+
 export default function HomeScreen({ navigation, role }) {
     const isManager = role === "manager";
     const [quickPageMembers, setQuickPageMembers] = useState([]);
@@ -204,6 +205,18 @@ export default function HomeScreen({ navigation, role }) {
                                 />
                             }
                             onPress={() => navigation.navigate("Settings")}
+                        />
+                        <PremiumTile
+                            title="Profile"
+                            subtitle="My Info"
+                            icon={
+                                <Ionicons
+                                    name="person-outline"
+                                    size={22}
+                                    color={theme.colors.text}
+                                />
+                            }
+                            onPress={() => navigation.navigate("Profile")}
                         />
                     </View>
                 </ScrollView>
