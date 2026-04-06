@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import { getCurrentUserProfile } from "./auth";
 
-export async function sendPingToUser({ toUserId, message }) {
+export async function sendPingToUser({ toUserId, message, type = "default" }) {
     const currentUser = await getCurrentUserProfile();
 
     if (!currentUser) {
@@ -24,6 +24,7 @@ export async function sendPingToUser({ toUserId, message }) {
         from_user: currentUser.username,
         to_user: targetUser.username,
         message,
+        type, // <-- add it here
         acknowledged: false,
         sent: false,
     };
@@ -53,6 +54,7 @@ export async function getInboxPings() {
         .select(`
       id,
       message,
+      type,
       acknowledged,
       sent,
       created_at,

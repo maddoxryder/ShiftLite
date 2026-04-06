@@ -111,6 +111,7 @@ export default function MemberChatScreen({ route, navigation }) {
             await sendPingToUser({
                 toUserId: member.id,
                 message: finalMessage,
+                type: selectedType,
             });
 
             Alert.alert(
