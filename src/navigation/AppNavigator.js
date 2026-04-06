@@ -12,6 +12,7 @@ import TasksScreen from "../screens/TasksScreen";
 import InventoryScreen from "../screens/InventoryScreen";
 import MessagingScreen from "../screens/MessagingScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import EmployeeDirectoryScreen from "../screens/EmployeeDirectoryScreen";
 
 import {
   getCurrentSession,
@@ -118,16 +119,23 @@ export default function AppNavigator() {
               </Stack.Screen>
 
               <Stack.Screen
-                  name="MemberChat"
-                  options={{ title: "Page Member" }}
+                  name="EmployeeDirectory"
+                  options={{ title: "Employee Directory" }}
               >
+                {(props) => (
+                    <EmployeeDirectoryScreen
+                        {...props}
+                        role={profile.role}
+                        user={profile}
+                    />
+                )}
+              </Stack.Screen>
+
+              <Stack.Screen name="MemberChat" options={{ title: "Page Member" }}>
                 {(props) => <MemberChatScreen {...props} />}
               </Stack.Screen>
 
-              <Stack.Screen
-                  name="PingInbox"
-                  options={{ title: "Ping Inbox" }}
-              >
+              <Stack.Screen name="PingInbox" options={{ title: "Ping Inbox" }}>
                 {(props) => (
                     <PingInboxScreen
                         {...props}
@@ -137,17 +145,11 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
 
-              <Stack.Screen
-                  name="Orders"
-                  options={{ title: "Orders" }}
-              >
+              <Stack.Screen name="Orders" options={{ title: "Orders" }}>
                 {(props) => <OrdersScreen {...props} />}
               </Stack.Screen>
 
-              <Stack.Screen
-                  name="Settings"
-                  options={{ title: "Settings" }}
-              >
+              <Stack.Screen name="Settings" options={{ title: "Settings" }}>
                 {(props) => (
                     <SettingsScreen
                         {...props}
@@ -157,10 +159,7 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
 
-              <Stack.Screen
-                  name="Schedule"
-                  options={{ title: "Schedule" }}
-              >
+              <Stack.Screen name="Schedule" options={{ title: "Schedule" }}>
                 {(props) => (
                     <ScheduleScreen
                         {...props}
@@ -170,23 +169,13 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
 
-              <Stack.Screen
-                  name="Tasks"
-                  options={{ title: "Tasks" }}
-              >
+              <Stack.Screen name="Tasks" options={{ title: "Tasks" }}>
                 {(props) => (
-                    <TasksScreen
-                        {...props}
-                        role={profile.role}
-                        user={profile}
-                    />
+                    <TasksScreen {...props} role={profile.role} user={profile} />
                 )}
               </Stack.Screen>
 
-              <Stack.Screen
-                  name="Inventory"
-                  options={{ title: "Inventory" }}
-              >
+              <Stack.Screen name="Inventory" options={{ title: "Inventory" }}>
                 {(props) => (
                     <InventoryScreen
                         {...props}
@@ -196,11 +185,7 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
 
-              <Stack.Screen
-                  name="Messaging"
-                  options={{ title: "Announcements" }}
-              >
-                
+              <Stack.Screen name="Messaging" options={{ title: "Announcements" }}>
                 {(props) => (
                     <MessagingScreen
                         {...props}
@@ -210,17 +195,10 @@ export default function AppNavigator() {
                 )}
               </Stack.Screen>
 
-              <Stack.Screen
-                  name="Profile"
-                  options={{ title: "Profile" }}
-              >
-                  {(props) => (
-                      <ProfileScreen
-                          {...props}
-                          role={profile.role}
-                          user={profile}
-                      />
-                  )}
+              <Stack.Screen name="Profile" options={{ title: "Profile" }}>
+                {(props) => (
+                    <ProfileScreen {...props} role={profile.role} user={profile} />
+                )}
               </Stack.Screen>
             </>
         )}

@@ -1,32 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import PremiumTile from "../components/PremiumTile";
 import { theme } from "../theme/theme";
-import { supabase } from "../services/supabase";
-
 
 export default function HomeScreen({ navigation, role }) {
     const isManager = role === "manager";
-    const [quickPageMembers, setQuickPageMembers] = useState([]);
-
-    useEffect(() => {
-        const loadUsers = async () => {
-            const { data, error } = await supabase
-                .from("app_users")
-                .select("id, username, display_name, role, active")
-                .eq("active", true)
-                .order("display_name", { ascending: true });
-
-            if (!error && data) {
-                const filtered = data.filter((u) => u.role !== "manager");
-                setQuickPageMembers(filtered);
-            }
-        };
-
-        loadUsers();
-    }, []);
 
     return (
         <View style={{ flex: 1, backgroundColor: theme.colors.bg }}>
@@ -38,7 +18,6 @@ export default function HomeScreen({ navigation, role }) {
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ padding: 18, paddingBottom: 30 }}
                 >
-                    {/* TITLE AT TOP */}
                     <Text
                         style={{
                             color: theme.colors.text,
@@ -50,7 +29,6 @@ export default function HomeScreen({ navigation, role }) {
                         ShiftLite
                     </Text>
 
-                    {/* QUICK PAGE */}
                     <View style={{ marginBottom: 24 }}>
                         <View
                             style={{
@@ -86,30 +64,70 @@ export default function HomeScreen({ navigation, role }) {
                             </View>
                         </View>
 
-                        <View style={{ gap: 10 }}>
-                            {quickPageMembers.map((member) => (
-                                <QuickPageCard
-                                    key={member.id}
-                                    name={member.display_name}
-                                    role={member.role}
-                                    status="Available"
-                                    statusColor={theme.colors.success}
-                                    onPress={() =>
-                                        navigation.navigate("MemberChat", {
-                                            member: {
-                                                id: member.id,
-                                                name: member.username,
-                                                display_name: member.display_name,
-                                                role: member.role,
-                                            },
-                                        })
-                                    }
+                        <Pressable
+                            onPress={() => navigation.navigate("EmployeeDirectory")}
+                            style={({ pressed }) => ({
+                                backgroundColor: "rgba(255,255,255,0.05)",
+                                borderRadius: 18,
+                                padding: 16,
+                                borderWidth: 1,
+                                borderColor: "rgba(255,255,255,0.08)",
+                                transform: [{ scale: pressed ? 0.985 : 1 }],
+                            })}
+                        >
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    gap: 14,
+                                }}
+                            >
+                                <View style={{ flex: 1 }}>
+                                    <Text
+                                        style={{
+                                            color: theme.colors.text,
+                                            fontWeight: "900",
+                                            fontSize: 17,
+                                            marginBottom: 6,
+                                        }}
+                                    >
+                                        Open employee ping list
+                                    </Text>
+                                    <Text
+                                        style={{
+                                            color: theme.colors.muted,
+                                            lineHeight: 20,
+                                        }}
+                                    >
+                                        View every active employee in the company and choose who you
+                                        want to ping.
+                                    </Text>
+                                </View>
+
+                                <Ionicons
+                                    name="people-outline"
+                                    size={24}
+                                    color={theme.colors.text}
                                 />
-                            ))}
-                        </View>
+                            </View>
+
+                            <View
+                                style={{
+                                    marginTop: 14,
+                                    paddingVertical: 12,
+                                    borderRadius: 12,
+                                    backgroundColor: "rgba(124,92,255,0.16)",
+                                    alignItems: "center",
+                                }}
+                            >
+                                <Text style={{ color: theme.colors.text, fontWeight: "800" }}>
+                                    Browse Employees
+                                </Text>
+                            </View>
+                        </Pressable>
                     </View>
 
-                    {/* QUICK ACTIONS */}
                     <SectionTitle title="Quick Actions" />
 
                     <View style={{ flexDirection: "row", gap: 12, marginBottom: 12 }}>
@@ -225,8 +243,6 @@ export default function HomeScreen({ navigation, role }) {
     );
 }
 
-/* ---------- COMPONENTS ---------- */
-
 function SectionTitle({ title }) {
     return (
         <Text
@@ -239,57 +255,5 @@ function SectionTitle({ title }) {
         >
             {title}
         </Text>
-    );
-}
-
-function QuickPageCard({ name, role, status, statusColor, onPress }) {
-    return (
-        <Pressable
-            onPress={onPress}
-            style={({ pressed }) => ({
-                backgroundColor: "rgba(255,255,255,0.05)",
-                borderRadius: 18,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.08)",
-                transform: [{ scale: pressed ? 0.98 : 1 }],
-            })}
-        >
-            <View
-                style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                }}
-            >
-                <View>
-                    <Text
-                        style={{
-                            color: theme.colors.text,
-                            fontWeight: "800",
-                            fontSize: 16,
-                        }}
-                    >
-                        {name}
-                    </Text>
-                    <Text style={{ color: theme.colors.muted }}>{role}</Text>
-                </View>
-
-                <Text style={{ color: statusColor, fontWeight: "800" }}>{status}</Text>
-            </View>
-
-            <View
-                style={{
-                    marginTop: 10,
-                    paddingVertical: 10,
-                    borderRadius: 12,
-                    backgroundColor: "rgba(124,92,255,0.16)",
-                    alignItems: "center",
-                }}
-            >
-                <Text style={{ color: theme.colors.text, fontWeight: "800" }}>
-                    Page
-                </Text>
-            </View>
-        </Pressable>
     );
 }
